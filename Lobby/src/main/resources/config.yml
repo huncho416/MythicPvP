@@ -1,0 +1,244 @@
+radium:
+  api:
+    base_url: "http://localhost:7777"  # FIXED: Proper Radium proxy API port
+    timeout: 5000
+    retry_attempts: 3
+    endpoints:
+      punishments: "/api/punishments"
+      player_data: "/api/player"
+      servers: "/api/servers"
+  # Hybrid Vanish Integration
+  vanish:
+    respect_status: true      # Respect vanish status from proxy via plugin messages
+    hybrid_mode: true         # Use hybrid vanish system (plugin messages + HTTP fallback)
+    hide_from_tab: true       # Hide vanished players from tab if viewer can't see them
+    cache_duration: 30        # Cache vanish status for X seconds
+    # NOTE: The hybrid system uses plugin messages from Radium proxy for real-time updates
+    # and falls back to HTTP API '/api/players/uuid/{uuid}/vanish' when needed:
+    # - 200 + {"vanished": boolean, "level": "HELPER|MODERATOR|ADMIN|OWNER"} for online players
+    # - 404 for offline/disconnected players (treated as not vanished)
+  fallback:
+    default_rank: "Default"
+    default_prefix: "&7"
+
+# Redis Configuration for Real-time Punishment Updates
+redis:
+  enabled: true
+  host: "localhost"
+  port: 6379
+  password: ""  # Leave empty if no password
+  database: 0
+  timeout: 5000  # Connection timeout in milliseconds
+  cache:
+    punishment_ttl: 300  # Cache punishment data for 5 minutes
+    mute_ttl: 300       # Cache mute data for 5 minutes
+  channels:
+    punishment_updates: "radium:punishment:updates"
+    mute_updates: "radium:mute:updates"
+
+# HTTP API for gamemode synchronization with Radium proxy
+http_api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8081  # Use 8081 since Radium uses 8080
+  endpoints:
+    gamemode: "/api/gamemode"
+
+spawn:
+  world: "lobby"
+  x: 110.0
+  y: 78.0
+  z: 65.0
+  yaw: 0.0
+  pitch: 0.0
+
+schematics:
+  enabled: true
+  paste_on_startup: true
+  async_operations: true
+  cache_enabled: true
+  cache_max_size: 10
+  files:
+    lobby:
+      file: "schematics/lobby.schematic"
+      origin:
+        x: 0
+        y: 64
+        z: 0
+      rotation: 0  # 0, 90, 180, 270 degrees
+      mirror: false
+      paste_air: false
+      enabled: true
+    test:
+      file: "schematics/test.schem"
+      origin:
+        x: 100
+        y: 64
+        z: 0
+      rotation: 0
+      mirror: false
+      paste_air: false
+      enabled: false  # Don't paste automatically
+
+lobby:
+  join-items:
+    "0": "COMPASS:&bServer Selector"
+    "1": "REDSTONE:&ePlayer Visibility"
+
+queue:
+  enabled: true
+  servers:
+    survival:
+      name: "&aSurvival"
+      priority: 1
+      max_players: 100
+    creative:
+      name: "&bCreative" 
+      priority: 2
+      max_players: 50
+    skyblock:
+      name: "&eSkyBlock"
+      priority: 3
+      max_players: 75
+
+scoreboard:
+  enabled: true
+  title: "&d&lMythicPvP"  # Light pink and bold "MythicPvP"
+  servers:
+    prison: 42      # Mock player count
+    gens: 28        # Mock player count  
+    skyblock: 35    # Mock player count
+    dungeons: 15    # Mock player count
+  lines:
+    # Exact format from top to bottom as displayed
+    - "&8      Lobby Server      "        # Right under title: Dark grey centered text
+    - ""                                  # Blank line
+    - "&5┃ &dInformation"                 # Purple "┃" + light pink "Information" header
+    - "&5┃ &7Player: &f%player_name%"     # Purple "┃" + gray "Player:" + white player name
+    - "&5┃ &7Server: &f%current_server%"  # Purple "┃" + gray "Server:" + white server name
+    - ""                                  # Blank line
+    - "&5┃ &dServers"                     # Purple "┃" + pink "Servers" header
+    - "&5┃ &eSkyblock &6[%skyblock_players%]" # Purple "┃" + yellow "Skyblock" + gold player count
+    - "&5┃ &bPrison &1[%prison_players%]" # Purple "┃" + light blue "Prison" + dark blue player count
+    - "&5┃ &aGens &2[%gens_players%]"     # Purple "┃" + light green "Gens" + dark green player count
+    - "&5┃ &cDungeons &4[%dungeons_players%]"  # Purple "┃" + light red "Dungeons" + dark red player count
+    - ""                                  # Blank line
+    - "&dmythicpvp.net"                   # Bottom: Server IP in light pink
+
+# Tab list formatting - matches MythicHub exactly
+tablist:
+  enabled: true
+  respect_radium_formatting: true
+  respect_vanish_status: true  # NEW: Respect vanish status from Radium
+  show_vanish_indicator: true  # NEW: Show (Vanished) indicator to staff
+  update_interval: 100  # ticks
+  header:
+    - ""
+    - "     &d&lMYTHIC&f&lPVP"            # Centered bold title with proper spacing
+    - ""                                  # Blank line
+    - "     Connected to: %server_name%"  # Connected to line with server name
+    - "      play.mythicpvp.net"          # Server IP in gray
+    - ""
+  footer:
+    - ""
+    - "&5Hub &8// &f%ping% &8* &dstore.mythicpvp.net"
+    - "&d%global_players% &fGlobal"
+    - ""
+  # Player name formatting using Radium integration
+  player_format: "%prefix%%color%%player%"  # Radium format: prefix + color + player name
+  fallback_format: "&7%player_name%"        # Fallback for players without ranks
+
+# World lighting and weather - keeps lobby bright
+world_lighting:
+  enabled: true
+  always_day: true  # Keep world time at day
+  clear_weather: true  # Always clear weather
+  max_light_level: true  # Maximum light everywhere
+
+messages:
+  prefix: "&8[&bLobby&8] &r"
+  no_permission: "&cYou don't have permission to do that!"
+  player_not_found: "&cPlayer not found!"
+  command_disabled: "&cThis command is disabled!"
+  
+  join_message: "&7%player% &ejoined the lobby"
+  leave_message: "&7%player% &eleft the lobby"
+  
+  fly_enabled: "&aFly mode enabled!"
+  fly_disabled: "&cFly mode disabled!"
+  
+  spawn_teleported: "&aTeleported to spawn!"
+  spawn_set: "&aSpawn location set!"
+  
+  queue_joined: "&aYou joined the %server% queue!"
+  queue_left: "&cYou left the %server% queue!"
+  queue_paused: "&eThe %server% queue is paused"
+  queue_resumed: "&aThe %server% queue is resumed"
+  
+  visibility_all: "&aYou can now see all players!"
+  visibility_staff: "&eYou can now only see staff members!"
+  visibility_none: "&cYou are now invisible to other players!"
+  
+  # Schematic messages
+  schematic:
+    paste_success: "&aSuccessfully pasted schematic '%schematic%'! (%blocks% blocks in %time%ms)"
+    paste_failed: "&cFailed to paste schematic '%schematic%': %error%"
+    load_success: "&aLoaded schematic '%schematic%' (%dimensions%)"
+    load_failed: "&cFailed to load schematic '%schematic%': %error%"
+    not_found: "&cSchematic '%schematic%' not found or not loaded!"
+    cache_cleared: "&aSchematic cache cleared!"
+    reload_success: "&aSchematics reloaded! (%count% cached)"
+    reload_failed: "&cFailed to reload schematics: %error%"
+    no_permission: "&cYou don't have permission to use schematic commands!"
+  
+  # Punishment messages
+  punishment:
+    executing: "&7Executing command..."
+    failed: "&cFailed to execute punishment command: %error%"
+    api_offline: "&cUnable to connect to Radium punishment system"
+    invalid_duration: "&cInvalid duration format. Examples: 1d, 2h, 30m, 1w"
+  
+  # Protection messages
+  protection:
+    block_break: "&cYou cannot break blocks here!"
+    block_place: "&cYou cannot place blocks here!"
+    item_drop: "&cYou cannot drop items here!"
+    item_pickup: "&cYou cannot pickup items here!"
+    inventory_move: "&cInventory interactions are disabled!"
+    portal_use: "&cPortals are disabled!"
+    chat: "&cChat is currently disabled!"
+
+protection:
+  anti_break: true
+  anti_place: true
+  anti_drop: true
+  anti_pickup: true
+  anti_hunger: true
+  anti_weather: true
+  anti_mob_spawn: true
+  anti_fall_damage: true
+  anti_void_damage: true
+  anti_portal: true
+  anti_chat: false  # Allow default players to chat if they have permission
+  inventory_move: true  # Prevent inventory interactions
+
+features:
+  double_jump: true
+  launch_pads: true
+  visibility_switching: true
+  player_hider: true
+  chat_formatting: true
+  tab_formatting: true
+
+server:
+  port: 25566
+  velocity:
+    enabled: true
+    secret: "radium-velocity-secret"  # Should match velocity.toml forwarding-secret
+  bind_address: "0.0.0.0"
+  
+  # HTTP API for gamemode synchronization
+  api:
+    enabled: true
+    port: 8081  # Different port from main server
+    bind_address: "0.0.0.0"

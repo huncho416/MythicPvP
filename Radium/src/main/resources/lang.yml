@@ -1,0 +1,213 @@
+# Radium Plugin Language Configuration
+
+# General messages
+general:
+  rank_not_found: "&cRank '{rank}' not found."
+  failed_operation: "&cFailed to {operation}: {message}"
+  player_not_found: "&cPlayer '{player}' not found."
+  no_permission: "&cYou don't have permission to do that."
+
+# Friend command messages
+friend:
+  usage:
+    header: "&eUsage: /friend <add|remove|list> [player]"
+    main: "&e/friend &7- Show friend commands"
+    add: "&e/friend add <player> &7- Add a friend"
+    remove: "&e/friend remove <player> &7- Remove a friend"
+    deny: "&e/friend deny <player> &7- Deny a friend request"
+    list: "&e/friend list &7- List your friends"
+    requests: "&e/friend requests &7- View friend requests"
+  add:
+    success: "&aAdded {target} as a friend."
+    already_friends: "&cYou are already friends with {target}."
+    cannot_add_self: "&cYou cannot add yourself as a friend."
+    user_not_found: "&cPlayer '{target}' not found!"
+    request_sent: "&eFriend request sent to {target}."
+    request_already_sent: "&cYou already have a pending friend request with {target}."
+    self: "&cYou cannot add yourself as a friend."
+    requests_disabled: "&c{target} has disabled friend requests."
+    incoming_request: "&e{player} sent you a friend request!"
+    accept_hover: "Accept"
+    deny_hover: "Deny"
+    now_friends: "&aYou are now friends with {target}!"
+  remove:
+    success: "&aRemoved {target} from your friends list."
+    not_friends: "&cYou are not friends with {target}."
+  list:
+    header: "&eYour Friends:"
+    no_friends: "&cYou have no friends."
+    none: "&cYou have no friends."
+    online_format: "&a● &e{username}"
+    offline_format: "&8● &7{username}"
+    online_hover: "Currently on {server}"
+    offline_hover: "Last seen: {lastSeen}"
+    lastseen_unknown: "Unknown"
+  requests:
+    header: "&ePending Friend Requests:"
+    no_requests: "&cYou have no pending friend requests."
+    none: "&cYou have no pending friend requests."
+    incoming_header: "&eIncoming Requests:"
+    outgoing_header: "&eOutgoing Requests:"
+    incoming_format: "&e{username}"
+    outgoing_format: "&7→ {username}"
+    accept_button: "&a[Accept]"
+    deny_button: "&c[Deny]"
+    cancel_button: "&c[Cancel]"
+    accept_hover: "Click to accept"
+    deny_hover: "Click to deny"
+    cancel_hover: "Click to cancel"
+    toggle_info: "&7Use &e/friend requests toggle &7to enable/disable friend requests."
+    toggle_on: "&aFriend requests enabled."
+    toggle_off: "&cFriend requests disabled."
+  deny:
+    success: "&aDenied friend request from {target}."
+    no_request: "&cYou have no pending friend request from {target}."
+
+# Command Messages
+commands:
+  grant:
+    header: "&eGrant Commands:"
+    usage:
+      main: "&e/grant <player> <rank> [duration] [reason] &7- Grant a rank to a player"
+    rank_not_exist: "&cRank '{rank}' does not exist!"
+    available_ranks: "&eAvailable ranks: {ranks}"
+    profile_not_found: "&cProfile for '{target}' not found!"
+    grant_permanent: "&aGranted {rank} to {target} permanently."
+    grant_temporary: "&aGranted {rank} to {target} for {duration}."
+    reason: "&7Reason: {reason}"
+    
+  grants:
+    header: "&eGrants Commands:"
+    usage:
+      main: "&e/grants <player> &7- View a player's rank grants"
+    profile_not_found: "&cProfile for '{target}' not found!"
+    no_ranks: "&c{target} has no active ranks."
+    header: "&e{target}'s Ranks ({total} total, {active} active, {inactive} inactive):"
+    granted_by: "&7Granted by: {granter}"
+    added_on: "&7Added on: {date}"
+    grant_reason: "&7Reason: {reason}"
+    hover:
+      expires_on: "&7Expires on: {date}"
+      expired: "&7Expired on: {date}"
+      
+  revoke:
+    header: "&eRevoke Commands:"
+    usage:
+      main: "&e/revoke <player> <rank> [reason] &7- Revoke a rank from a player"
+    profile_not_found: "&cProfile for '{target}' not found!"
+    success: "&aRevoked {rank} from {target}."
+    not_found: "&c{target} does not have the rank '{rank}'."
+    reason: "&7Reason: {reason}"
+
+  gamemode:
+    header: "&eGamemode Commands:"
+    usage:
+      main: "&e/gamemode <mode> [player] &7- Change gamemode"
+      gmc: "&e/gmc [player] &7- Set gamemode to creative"
+      gms: "&e/gms [player] &7- Set gamemode to survival"
+      gma: "&e/gma [player] &7- Set gamemode to adventure"
+      gmsp: "&e/gmsp [player] &7- Set gamemode to spectator"
+    success_self: "&aSet your gamemode to {gamemode}."
+    success_other: "&aSet {target}'s gamemode to {gamemode}."
+    invalid_gamemode: "&cInvalid gamemode '{gamemode}'. Valid modes: survival, creative, adventure, spectator"
+    player_not_found: "&cPlayer '{target}' not found or not online!"
+    no_permission: "&cYou don't have permission to change other players' gamemode!"
+    same_gamemode: "&cYou are already in {gamemode} mode!"
+    target_same_gamemode: "&c{target} is already in {gamemode} mode!"
+    redis_error: "&cFailed to send gamemode change request. Please try again."
+      
+  rank:
+    header: "&eRank Commands:"
+    usage:
+      main: "&e/rank &7- Show rank commands"
+      info: "&e/rank info <player> &7- Show a player's current rank"
+      create: "&e/rank create <name> &7- Create a new rank"
+      delete: "&e/rank delete <name> &7- Delete a rank"
+      setprefix: "&e/rank setprefix <name> <prefix> &7- Set rank prefix"
+      setsuffix: "&e/rank setsuffix <name> <suffix> &7- Set rank suffix"
+      settabprefix: "&e/rank settabprefix <name> <prefix> &7- Set tab-specific prefix"
+      settabsuffix: "&e/rank settabsuffix <name> <suffix> &7- Set tab-specific suffix"
+      setcolor: "&e/rank setcolor <name> <color> &7- Set rank color"
+      setweight: "&e/rank setweight <name> <weight> &7- Set rank weight"
+      permission_add: "&e/rank permission add <name> <permission> &7- Add permission to rank"
+      permission_remove: "&e/rank permission remove <name> <permission> &7- Remove permission from rank"
+      inherit: "&e/rank inherit <name> <inherit> &7- Toggle rank inheritance"
+      list: "&e/rank list &7- List all ranks"
+    profile_not_found: "&cProfile for '{target}' not found!"
+    current_rank: "&e{target}'s current rank: {rank}"
+    no_rank: "&c{target} has no active rank."
+    create:
+      usage: "&cUsage: /rank create <name>"
+      success: "&aCreated rank '{rank}' successfully."
+    delete:
+      usage: "&cUsage: /rank delete <name>"
+      success: "&aDeleted rank '{rank}' successfully."
+      not_found: "&cRank '{rank}' not found."
+    setprefix:
+      usage: "&cUsage: /rank setprefix <name> <prefix>"
+      success: "&aSet prefix for rank '{rank}' to '{prefix}'."
+    setsuffix:
+      usage: "&cUsage: /rank setsuffix <name> <suffix>"
+      success: "&aSet suffix for rank '{rank}' to '{suffix}'."
+    settabprefix:
+      usage: "&cUsage: /rank settabprefix <name> <prefix>"
+      success: "&aSet tab prefix for rank '{rank}' to '{prefix}'."
+    settabsuffix:
+      usage: "&cUsage: /rank settabsuffix <name> <suffix>"
+      success: "&aSet tab suffix for rank '{rank}' to '{suffix}'."
+    setcolor:
+      usage: "&cUsage: /rank setcolor <name> <color>"
+      success: "&aSet color for rank '{rank}' to '{color}'."
+      invalid_color: "&cInvalid color '{color}'."
+      valid_colors: "&7Valid colors: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white"
+    setweight:
+      usage: "&cUsage: /rank setweight <name> <weight>"
+      success: "&aSet weight for rank '{rank}' to {weight}."
+    permission:
+      add:
+        usage: "&cUsage: /rank permission add <name> <permission>"
+        success: "&aAdded permission '{permission}' to rank '{rank}'."
+        already_has: "&cRank '{rank}' already has permission '{permission}'."
+      remove:
+        usage: "&cUsage: /rank permission remove <name> <permission>"
+        success: "&aRemoved permission '{permission}' from rank '{rank}'."
+        not_found: "&cRank '{rank}' does not have permission '{permission}'."
+    inherit:
+      usage: "&cUsage: /rank inherit <name> <inherit>"
+      add_success: "&aRank '{rank}' now inherits from '{inherit}'."
+      remove_success: "&aRank '{rank}' no longer inherits from '{inherit}'."
+      failed: "&cFailed to {operation} inheritance: {reason}"
+    info:
+      usage: "&cUsage: /rank info <name>"
+      header: "&eRank Information for '{rank}':"
+      prefix: "&7Prefix: {prefix}"
+      suffix: "&7Suffix: {suffix}"
+      tabprefix: "&7Tab Prefix: {tabprefix}"
+      tabsuffix: "&7Tab Suffix: {tabsuffix}"
+      color: "&7Color: {color}"
+      weight: "&7Weight: {weight}"
+      inherits: "&7Inherits: {inherits}"
+      permissions: "&7Permissions:"
+      permission: "&8- {permission}"
+      inherited_permission: "&8- {permission} &7(from {source})"
+      none: "&7None"
+    list:
+      header: "&eAll Ranks:"
+      item: "&7- {prefix}{name} &7(weight: {weight})"
+
+# Vanish system messages
+vanish:
+  tablist_indicator: "&7[V] "
+  now_vanished: "&aYou are now vanished."
+  now_visible: "&aYou are now visible."
+  vanished_by_staff: "&eYou have been vanished by {staff}."
+  unvanished_by_staff: "&eYou have been made visible by {staff}."
+  auto_enabled: "&aAuto-vanish on join is now enabled."
+  auto_disabled: "&cAuto-vanish on join is now disabled."
+
+# General messages
+general:
+  player_not_found: "&cPlayer '{target}' not found!"
+  failed_operation: "&cFailed to {operation}: {message}"
+  no_permission: "&cYou don't have permission to use this command!"
+  unknown_error: "&cAn unknown error occurred."

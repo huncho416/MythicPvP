@@ -1,0 +1,46 @@
+# Radium Database Configuration
+# This file configures connections to MongoDB and Redis
+
+mongodb:
+  host: "localhost"
+  port: 27017
+  username: "radium"
+  password: "radium123"
+  database: "radium"
+  authSource: "admin"
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: "radium123"
+  database: 0
+
+# Lobby API Configuration
+lobby:
+  api:
+    url: "http://localhost:8081"
+
+# Punishment system configuration
+punishments:
+  warn:
+    threshold: 3
+    escalateToBanDuration: "7d"
+    deactivateWarnsAfterEscalation: true
+
+  # Default durations for temporary punishments
+  defaults:
+    tempBanDuration: "1d"
+    muteDuration: "1h"
+
+  # Messages for punishment notifications
+  messages:
+    broadcastBan: true
+    broadcastMute: false
+    broadcastKick: false
+    broadcastWarn: false
+
+# Lobby API Configuration
+lobby:
+  api:
+    url: "http://localhost:8080"
+    timeout: 5000  # milliseconds
