@@ -94,11 +94,14 @@ class PlayerJoinListener(private val plugin: LobbyPlugin) : EventListener<Player
             // Set tab list with MythicHub style (respects Radium)
             plugin.tabListManager.onPlayerJoin(player)
             
-            // CRITICAL: Update visibility for all players considering the new player's vanish status
-            plugin.visibilityManager.handlePlayerJoinVisibility(player)
+            // DISABLED: Using packet-based vanish system now
+            // Vanish visibility is handled by PacketVanishManager through packet interception
             
-            // Also update vanish-specific visibility for the new player
-            plugin.visibilityManager.updatePlayerVisibilityForVanish(player)
+            // DISABLED: Vanish visibility is now handled exclusively by PacketVanishManager
+            // plugin.visibilityManager.handlePlayerJoinVisibility(player) // Can conflict with vanish system
+            
+            // DISABLED: Vanish visibility is now handled by PacketVanishManager only
+            // plugin.visibilityManager.updatePlayerVisibilityForVanish(player) // Can cause race conditions with vanish messages
             
             // Check for updates (staff only)
             plugin.radiumIntegration.hasPermission(player.uuid, "hub.update").thenAccept { hasUpdate ->

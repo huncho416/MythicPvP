@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm") version "2.0.20" apply false
-    id("com.github.johnrengelman.shadow") version "8.1.1" apply false
+    id("io.github.goooler.shadow") version "8.1.8" apply false
 }
 
 allprojects {
@@ -26,7 +26,7 @@ allprojects {
 
 // Shared dependency versions
 extra["kotlinVersion"] = "2.0.20"
-extra["minestomVersion"] = "2025.08.12-1.21.8"
+extra["minestomVersion"] = "2025.08.29-1.21.8"
 extra["velocityVersion"] = "3.4.0-SNAPSHOT"
 extra["mongoVersion"] = "4.11.1"
 extra["redisVersion"] = "6.3.2.RELEASE"
@@ -41,6 +41,7 @@ extra["junitVersion"] = "5.9.2"
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "io.github.goooler.shadow")
     
     dependencies {
         val implementation by configurations

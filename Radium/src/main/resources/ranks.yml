@@ -17,9 +17,9 @@
 ranks:
   OWNER:
     prefix: "&4[OWNER] &c"
-    tabPrefix: "&4[O] &c"
+    tabPrefix: "&4OWNER &f"
     tabSuffix: ""
-    color: "&c"
+    color: "&f"
     weight: 1000
     permissions:
       - "radium.*"
@@ -69,7 +69,7 @@ ranks:
     prefix: ""
     tabPrefix: ""
     tabSuffix: ""
-    color: "&7"
+    color: "&f"
     weight: 0
     permissions: []
     inherits: []

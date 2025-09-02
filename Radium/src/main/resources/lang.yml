@@ -1,69 +1,147 @@
 # Radium Plugin Language Configuration
 
-# General messages
-general:
-  rank_not_found: "&cRank '{rank}' not found."
-  failed_operation: "&cFailed to {operation}: {message}"
-  player_not_found: "&cPlayer '{player}' not found."
-  no_permission: "&cYou don't have permission to do that."
-
-# Friend command messages
-friend:
+# Rank command messages
+rank:
+  header: "&e&l--- Rank Management ---"
   usage:
-    header: "&eUsage: /friend <add|remove|list> [player]"
-    main: "&e/friend &7- Show friend commands"
-    add: "&e/friend add <player> &7- Add a friend"
-    remove: "&e/friend remove <player> &7- Remove a friend"
-    deny: "&e/friend deny <player> &7- Deny a friend request"
-    list: "&e/friend list &7- List your friends"
-    requests: "&e/friend requests &7- View friend requests"
-  add:
-    success: "&aAdded {target} as a friend."
-    already_friends: "&cYou are already friends with {target}."
-    cannot_add_self: "&cYou cannot add yourself as a friend."
-    user_not_found: "&cPlayer '{target}' not found!"
-    request_sent: "&eFriend request sent to {target}."
-    request_already_sent: "&cYou already have a pending friend request with {target}."
-    self: "&cYou cannot add yourself as a friend."
-    requests_disabled: "&c{target} has disabled friend requests."
-    incoming_request: "&e{player} sent you a friend request!"
-    accept_hover: "Accept"
-    deny_hover: "Deny"
-    now_friends: "&aYou are now friends with {target}!"
-  remove:
-    success: "&aRemoved {target} from your friends list."
-    not_friends: "&cYou are not friends with {target}."
-  list:
-    header: "&eYour Friends:"
-    no_friends: "&cYou have no friends."
-    none: "&cYou have no friends."
-    online_format: "&a● &e{username}"
-    offline_format: "&8● &7{username}"
-    online_hover: "Currently on {server}"
-    offline_hover: "Last seen: {lastSeen}"
-    lastseen_unknown: "Unknown"
-  requests:
-    header: "&ePending Friend Requests:"
-    no_requests: "&cYou have no pending friend requests."
-    none: "&cYou have no pending friend requests."
-    incoming_header: "&eIncoming Requests:"
-    outgoing_header: "&eOutgoing Requests:"
-    incoming_format: "&e{username}"
-    outgoing_format: "&7→ {username}"
-    accept_button: "&a[Accept]"
-    deny_button: "&c[Deny]"
-    cancel_button: "&c[Cancel]"
-    accept_hover: "Click to accept"
-    deny_hover: "Click to deny"
-    cancel_hover: "Click to cancel"
-    toggle_info: "&7Use &e/friend requests toggle &7to enable/disable friend requests."
-    toggle_on: "&aFriend requests enabled."
-    toggle_off: "&cFriend requests disabled."
-  deny:
-    success: "&aDenied friend request from {target}."
-    no_request: "&cYou have no pending friend request from {target}."
+    main: "&e/rank &7- Show rank management commands"
+    create: "&e/rank create <name> &7- Create a new rank"
+    delete: "&e/rank delete <name> &7- Delete a rank"
+    setprefix: "&e/rank setprefix <rank> <prefix> &7- Set rank prefix"
+    setsuffix: "&e/rank setsuffix <rank> <suffix> &7- Set rank suffix"
+    settabprefix: "&e/rank settabprefix <rank> <prefix> &7- Set tab prefix"
+    settabsuffix: "&e/rank settabsuffix <rank> <suffix> &7- Set tab suffix"
+    setweight: "&e/rank setweight <rank> <weight> &7- Set rank weight"
+    permission_add: "&e/rank permission add <rank> <permission> &7- Add permission"
+    permission_remove: "&e/rank permission remove <rank> <permission> &7- Remove permission"
+    inherit: "&e/rank inherit <rank> <inherit_rank> &7- Add inheritance"
+    info: "&e/rank info <rank> &7- View rank information"
+    list: "&e/rank list &7- List all ranks"
 
-# Command Messages
+# Vanish system messages
+vanish:
+  tablist_indicator: "&7[V] "
+  enabled: "&aYou are now vanished!"
+  disabled: "&cYou are no longer vanished!"
+  now_vanished: "&aYou are now vanished!"
+  now_visible: "&cYou are now visible!"
+  target_enabled: "&a{player} is now vanished!"
+  target_disabled: "&c{player} is no longer vanished!"
+  vanished_by_staff: "&aYou have been vanished by {staff}!"
+  unvanished_by_staff: "&cYou have been unvanished by {staff}!"
+  auto_enabled: "&aAuto-vanish enabled! You will now automatically vanish on join."
+  auto_disabled: "&cAuto-vanish disabled."
+  usage: "&cUsage: /vanish [player]"
+  no_permission: "&cYou don't have permission to vanish other players."
+  staff_notification: "&b(SC) {rank_prefix}{player} &7has &evanished &7on &e{server}"
+  unvanish_staff_notification: "&b(SC) {rank_prefix}{player} &7has &eunvanished &7on &e{server}"
+
+# Staff messages
+staff:
+  connected: "&b(SC) {rank_prefix}{player} &7connected to &e{server}&7."
+  disconnected: "&b(SC) {rank_prefix}{player} &7disconnected from &e{server}&7."
+  prefix: "&b(SC) "
+  listening_enabled: "&aYou are now listening to staff chat!"
+  listening_disabled: "&cYou are no longer listening to staff chat!"
+  chat_format: "&b(SC) {rank_prefix}{player}&7: &f{message}"
+  chat_enabled: "&aStaff chat enabled!"
+  chat_disabled: "&cStaff chat disabled!"
+  server_switch: "&b(SC) {rank_prefix}{player} &7switched to server &e{server}&7."
+  create:
+    usage: "&cUsage: /rank create <name>"
+    success: "&aCreated rank '{rank}' successfully!"
+    already_exists: "&cRank '{rank}' already exists!"
+  delete:
+    usage: "&cUsage: /rank delete <name>"
+    success: "&aDeleted rank '{rank}' successfully!"
+    not_found: "&cRank '{rank}' not found!"
+  setprefix:
+    usage: "&cUsage: /rank setprefix <rank> <prefix>"
+    success: "&aSet prefix for rank '{rank}' to '{prefix}'"
+  setsuffix:
+    usage: "&cUsage: /rank setsuffix <rank> <suffix>"
+    success: "&aSet suffix for rank '{rank}' to '{suffix}'"
+  settabprefix:
+    usage: "&cUsage: /rank settabprefix <rank> <prefix>"
+    success: "&aSet tab prefix for rank '{rank}' to '{prefix}'"
+  settabsuffix:
+    usage: "&cUsage: /rank settabsuffix <rank> <suffix>"
+    success: "&aSet tab suffix for rank '{rank}' to '{suffix}'"
+  setcolor:
+    usage: "&cUsage: /rank setcolor <rank> <color>"
+    success: "&aSet color for rank '{rank}' to '{color}'"
+    invalid_color: "&cInvalid color '{color}'!"
+    valid_colors: "&eValid colors: &4dark_red &c&lred &6gold &e&lyellow &2dark_green &a&lgreen &b&laqua &3dark_aqua &1dark_blue &9&lblue &5dark_purple &d&lmagenta &f&lwhite &7gray &8dark_gray &0&lblack"
+  setweight:
+    usage: "&cUsage: /rank setweight <rank> <weight>"
+    success: "&aSet weight for rank '{rank}' to {weight}"
+  permission:
+    add:
+      usage: "&cUsage: /rank permission add <rank> <permission>"
+      success: "&aAdded permission '{permission}' to rank '{rank}'"
+      already_has: "&cRank '{rank}' already has permission '{permission}'"
+    remove:
+      usage: "&cUsage: /rank permission remove <rank> <permission>"
+      success: "&aRemoved permission '{permission}' from rank '{rank}'"
+      not_found: "&cRank '{rank}' does not have permission '{permission}'"
+  inherit:
+    usage: "&cUsage: /rank inherit <rank> <inherit_rank>"
+    success: "&aRank '{rank}' now inherits from '{inherit_rank}'"
+    circular: "&cCannot inherit: would create circular inheritance"
+    already_inherits: "&cRank '{rank}' already inherits from '{inherit_rank}'"
+    remove_success: "&aRemoved inheritance '{inherit}' from rank '{rank}'"
+    add_success: "&aAdded inheritance '{inherit}' to rank '{rank}'"
+    failed: "&cFailed to update inheritance: {message}"
+  info:
+    usage: "&cUsage: /rank info <rank>"
+    header: "&e&l--- Rank Info: {rank} ---"
+    prefix: "&ePrefix: &r{prefix}"
+    suffix: "&eSuffix: &r{suffix}"
+    tabprefix: "&eTab Prefix: &r{tabprefix}"
+    tabsuffix: "&eTab Suffix: &r{tabsuffix}"
+    weight: "&eWeight: &6{weight}"
+    permissions: "&ePermissions:"
+    inherits: "&eInherits: &7{inherits}"
+    none: "&7None"
+    permission: "&7  - {permission}"
+    inherited_permission: "&7  - {permission} &8(from {source})"
+  list:
+    header: "&e&l--- All Ranks ---"
+    entry: "&e{name} &7(Weight: {weight})"
+    empty: "&cNo ranks found!"
+    none: "&cNo ranks found!"
+
+# Revoke command messages
+revoke:
+  header: "&eRevoke Commands:"
+  usage:
+    main: "&e/revoke <player> <rank> [reason] &7- Revoke a rank from a player"
+  profile_not_found: "&cProfile for '{target}' not found!"
+  success: "&aRevoked {rank} from {target}."
+  not_found: "&c{target} does not have the rank '{rank}'."
+  reason: "&7Reason: {reason}"
+
+# Chat management messages
+chat:
+  clear:
+    success: "&aChat has been cleared!"
+    broadcast: "&e&lChat has been cleared by a staff member."
+  mute:
+    success: "&aChat has been muted!"
+    broadcast: "&cChat has been muted by a staff member."
+    already_muted: "&cChat is already muted!"
+  unmute:
+    success: "&aChat has been unmuted!"
+    broadcast: "&aChat has been unmuted by a staff member."
+    not_muted: "&cChat is not currently muted!"
+  slow:
+    success: "&aChat slow mode set to {delay} seconds!"
+    disabled: "&aChat slow mode has been disabled!"
+    broadcast_enabled: "&e&lChat slow mode enabled: {delay} second delay."
+    broadcast_disabled: "&a&lChat slow mode has been disabled."
+    invalid_duration: "&cInvalid duration! Use format: 5s, 10s, 1m, etc. (Max: 5m)"
+
+# Grant command messages  
 commands:
   grant:
     header: "&eGrant Commands:"
@@ -75,135 +153,91 @@ commands:
     grant_permanent: "&aGranted {rank} to {target} permanently."
     grant_temporary: "&aGranted {rank} to {target} for {duration}."
     reason: "&7Reason: {reason}"
-    
   grants:
-    header: "&eGrants Commands:"
-    usage:
-      main: "&e/grants <player> &7- View a player's rank grants"
+    usage: "&cUsage: /grants <player>"
     profile_not_found: "&cProfile for '{target}' not found!"
-    no_ranks: "&c{target} has no active ranks."
-    header: "&e{target}'s Ranks ({total} total, {active} active, {inactive} inactive):"
-    granted_by: "&7Granted by: {granter}"
-    added_on: "&7Added on: {date}"
-    grant_reason: "&7Reason: {reason}"
+    no_ranks: "&c{target} has no grants."
+    header: "&e&l--- Grants for {target} ---&r\n&7Total: {total} | Active: {active} | Inactive: {inactive}"
+    granted_by: "&bGranted by: &f{granter}"
+    added_on: "&bAdded on: &f{date}"
+    grant_reason: "&bReason: &f{reason}"
     hover:
-      expires_on: "&7Expires on: {date}"
-      expired: "&7Expired on: {date}"
-      
-  revoke:
-    header: "&eRevoke Commands:"
-    usage:
-      main: "&e/revoke <player> <rank> [reason] &7- Revoke a rank from a player"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    success: "&aRevoked {rank} from {target}."
-    not_found: "&c{target} does not have the rank '{rank}'."
-    reason: "&7Reason: {reason}"
-
+      expired: "&cExpired on: &f{date}"
+      revoked_by: "&cRevoked by: &f{revoker}"
+      revoked_on: "&cRevoked on: &f{date}"
+      revoked_reason: "&cRevoke Reason: &f{reason}"
+      expires_on: "&bExpires on: &f{date}"
+      time_remaining: "&bTime remaining: &f{duration}"
+      duration: "&bDuration: &f{duration}"
+      click_to_revoke: "&e&lClick to revoke this rank"
   gamemode:
-    header: "&eGamemode Commands:"
+    invalid_gamemode: "&cInvalid gamemode '{gamemode}'! Use: survival, creative, adventure, spectator"
+    not_connected: "&cTarget player is not connected to a server!"
+    success_self: "&aYour gamemode has been set to &e{gamemode}&a."
+    success_other: "&aSet &e{target}'s &agamemode to &e{gamemode}&a."
+    redis_error: "&cFailed to execute gamemode command. Please try again."
+  message:
+    header: "&eMessage Commands:"
     usage:
-      main: "&e/gamemode <mode> [player] &7- Change gamemode"
-      gmc: "&e/gmc [player] &7- Set gamemode to creative"
-      gms: "&e/gms [player] &7- Set gamemode to survival"
-      gma: "&e/gma [player] &7- Set gamemode to adventure"
-      gmsp: "&e/gmsp [player] &7- Set gamemode to spectator"
-    success_self: "&aSet your gamemode to {gamemode}."
-    success_other: "&aSet {target}'s gamemode to {gamemode}."
-    invalid_gamemode: "&cInvalid gamemode '{gamemode}'. Valid modes: survival, creative, adventure, spectator"
-    player_not_found: "&cPlayer '{target}' not found or not online!"
-    no_permission: "&cYou don't have permission to change other players' gamemode!"
-    same_gamemode: "&cYou are already in {gamemode} mode!"
-    target_same_gamemode: "&c{target} is already in {gamemode} mode!"
-    redis_error: "&cFailed to send gamemode change request. Please try again."
-      
-  rank:
-    header: "&eRank Commands:"
+      main: "&e/msg <player> <message> &7- Send a private message"
+      reply: "&e/reply <message> &7- Reply to the last message"
+    player_not_found: "&cPlayer '{target}' not found!"
+    cannot_message_self: "&cYou cannot message yourself!"
+    no_one_to_reply: "&cYou have no one to reply to!"
+    reply_target_offline: "&cThe player you're trying to reply to is offline!"
+    sender_format: "&e[&6Me &7-> &6{target}&e] &f{message}"
+    receiver_format: "&e[&6{sender} &7-> &6Me&e] &f{message}"
+  lastseen:
+    header: "&eLastSeen Commands:"
     usage:
-      main: "&e/rank &7- Show rank commands"
-      info: "&e/rank info <player> &7- Show a player's current rank"
-      create: "&e/rank create <name> &7- Create a new rank"
-      delete: "&e/rank delete <name> &7- Delete a rank"
-      setprefix: "&e/rank setprefix <name> <prefix> &7- Set rank prefix"
-      setsuffix: "&e/rank setsuffix <name> <suffix> &7- Set rank suffix"
-      settabprefix: "&e/rank settabprefix <name> <prefix> &7- Set tab-specific prefix"
-      settabsuffix: "&e/rank settabsuffix <name> <suffix> &7- Set tab-specific suffix"
-      setcolor: "&e/rank setcolor <name> <color> &7- Set rank color"
-      setweight: "&e/rank setweight <name> <weight> &7- Set rank weight"
-      permission_add: "&e/rank permission add <name> <permission> &7- Add permission to rank"
-      permission_remove: "&e/rank permission remove <name> <permission> &7- Remove permission from rank"
-      inherit: "&e/rank inherit <name> <inherit> &7- Toggle rank inheritance"
-      list: "&e/rank list &7- List all ranks"
+      main: "&e/lastseen <player> &7- Check when a player was last online"
     profile_not_found: "&cProfile for '{target}' not found!"
-    current_rank: "&e{target}'s current rank: {rank}"
-    no_rank: "&c{target} has no active rank."
-    create:
-      usage: "&cUsage: /rank create <name>"
-      success: "&aCreated rank '{rank}' successfully."
-    delete:
-      usage: "&cUsage: /rank delete <name>"
-      success: "&aDeleted rank '{rank}' successfully."
-      not_found: "&cRank '{rank}' not found."
-    setprefix:
-      usage: "&cUsage: /rank setprefix <name> <prefix>"
-      success: "&aSet prefix for rank '{rank}' to '{prefix}'."
-    setsuffix:
-      usage: "&cUsage: /rank setsuffix <name> <suffix>"
-      success: "&aSet suffix for rank '{rank}' to '{suffix}'."
-    settabprefix:
-      usage: "&cUsage: /rank settabprefix <name> <prefix>"
-      success: "&aSet tab prefix for rank '{rank}' to '{prefix}'."
-    settabsuffix:
-      usage: "&cUsage: /rank settabsuffix <name> <suffix>"
-      success: "&aSet tab suffix for rank '{rank}' to '{suffix}'."
-    setcolor:
-      usage: "&cUsage: /rank setcolor <name> <color>"
-      success: "&aSet color for rank '{rank}' to '{color}'."
-      invalid_color: "&cInvalid color '{color}'."
-      valid_colors: "&7Valid colors: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white"
-    setweight:
-      usage: "&cUsage: /rank setweight <name> <weight>"
-      success: "&aSet weight for rank '{rank}' to {weight}."
-    permission:
-      add:
-        usage: "&cUsage: /rank permission add <name> <permission>"
-        success: "&aAdded permission '{permission}' to rank '{rank}'."
-        already_has: "&cRank '{rank}' already has permission '{permission}'."
-      remove:
-        usage: "&cUsage: /rank permission remove <name> <permission>"
-        success: "&aRemoved permission '{permission}' from rank '{rank}'."
-        not_found: "&cRank '{rank}' does not have permission '{permission}'."
-    inherit:
-      usage: "&cUsage: /rank inherit <name> <inherit>"
-      add_success: "&aRank '{rank}' now inherits from '{inherit}'."
-      remove_success: "&aRank '{rank}' no longer inherits from '{inherit}'."
-      failed: "&cFailed to {operation} inheritance: {reason}"
-    info:
-      usage: "&cUsage: /rank info <name>"
-      header: "&eRank Information for '{rank}':"
-      prefix: "&7Prefix: {prefix}"
-      suffix: "&7Suffix: {suffix}"
-      tabprefix: "&7Tab Prefix: {tabprefix}"
-      tabsuffix: "&7Tab Suffix: {tabsuffix}"
-      color: "&7Color: {color}"
-      weight: "&7Weight: {weight}"
-      inherits: "&7Inherits: {inherits}"
-      permissions: "&7Permissions:"
-      permission: "&8- {permission}"
-      inherited_permission: "&8- {permission} &7(from {source})"
-      none: "&7None"
-    list:
-      header: "&eAll Ranks:"
-      item: "&7- {prefix}{name} &7(weight: {weight})"
+    online: "&e{target} &7is currently &aonline&7!"
+    never_joined: "&e{target} &7has never joined the server."
+    offline: "&e{target} &7was last seen &f{time} ago&7."
 
-# Vanish system messages
-vanish:
-  tablist_indicator: "&7[V] "
-  now_vanished: "&aYou are now vanished."
-  now_visible: "&aYou are now visible."
-  vanished_by_staff: "&eYou have been vanished by {staff}."
-  unvanished_by_staff: "&eYou have been made visible by {staff}."
-  auto_enabled: "&aAuto-vanish on join is now enabled."
-  auto_disabled: "&cAuto-vanish on join is now disabled."
+# Friend system messages
+friend:
+  usage:
+    header: "&e&l--- Friend Commands ---"
+    main: "&e/friend &7- Show friend commands"
+    add: "&e/friend add <player> &7- Send a friend request"
+    remove: "&e/friend remove <player> &7- Remove a friend"
+    deny: "&e/friend deny <player> &7- Deny a friend request"
+    list: "&e/friend list &7- Show your friends list"
+    requests: "&e/friend requests &7- Show pending requests"
+  add:
+    user_not_found: "&cUser '{target}' not found!"
+    self: "&cYou cannot add yourself as a friend!"
+    requests_disabled: "&c{target} has disabled friend requests!"
+    request_sent: "&aFriend request sent to &e{target}&a!"
+    incoming_request: "&e{sender} &7has sent you a friend request! &a[Accept] &c[Deny]"
+    now_friends: "&aYou are now friends with &e{target}&a!"
+    already_friends: "&cYou are already friends with &e{target}&c!"
+    request_already_sent: "&cYou have already sent a friend request to &e{target}&c!"
+    error: "&cAn error occurred while processing the friend request."
+  remove:
+    removed: "&cYou are no longer friends with &e{target}&c."
+    not_friends: "&cYou are not friends with &e{target}&c!"
+  deny:
+    denied: "&cDenied friend request from &e{target}&c."
+    no_request: "&cYou don't have a friend request from &e{target}&c!"
+  list:
+    header: "&e&l--- Friends ({count}/{max}) ---"
+    entry: "&a{friend} &7- {status}"
+    empty: "&7You have no friends. Use &e/friend add <player> &7to add some!"
+    online: "&aOnline"
+    offline: "&7Offline"
+  requests:
+    header: "&e&l--- Friend Requests ({count}) ---"
+    incoming: "&e{sender} &7- &a[Accept] &c[Deny]"
+    outgoing: "&7Sent to &e{target} &7- &c[Cancel]"
+    empty: "&7You have no pending friend requests."
+
+# Reload command messages
+reload:
+  success: "&aConfiguration reloaded successfully!"
+  error: "&cFailed to reload configuration: {error}"
 
 # General messages
 general:
@@ -211,3 +245,219 @@ general:
   failed_operation: "&cFailed to {operation}: {message}"
   no_permission: "&cYou don't have permission to use this command!"
   unknown_error: "&cAn unknown error occurred."
+  rank_not_found: "&cRank '{rank}' not found!"
+  database_error: "&cA database error occurred. Please try again later."
+
+# Punishment system messages
+punishments:
+  # General messages
+  no_permission: "&cYou don't have permission to use this command!"
+  no_silent_permission: "&cYou don't have permission to perform silent punishments!"
+  no_clear_permission: "&cYou don't have permission to clear punishments!"
+  player_not_found: "&cPlayer not found!"
+  error_occurred: "&cAn error occurred while processing the punishment!"
+  player_must_be_online_for_ipban: "&cPlayer must be online to perform an IP ban!"
+  cannot_punish_self: "&cYou cannot punish yourself!"
+  cannot_punish_higher_rank: "&cYou cannot punish a player with a higher rank than you!"
+  rate_limit: "&cYou are performing punishments too quickly! Please wait a moment."
+  invalid_duration: "&cInvalid duration format: {duration}"
+  save_failed: "&cFailed to save punishment to database!"
+  revoke_failed: "&cFailed to revoke punishment!"
+  silent_suffix: " &8(Silent)"
+
+  # Player disconnect messages (shown to the punished player)
+  player:
+    banned_permanent: "&4&l✖ &cYou are permanently banned from this server!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}\n&7Date: &f{date}\n\n&7Appeal at: &ediscord.gg/mythicpvp"
+    banned_temporary: "&4&l✖ &cYou are temporarily banned from this server!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}\n&7Duration: &f{duration}\n&7Expires: &f{expires}\n\n&7Appeal at: &ediscord.gg/mythicpvp"
+    ipbanned: "&4&l✖ &cYour IP address has been banned from this server!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}\n&7Date: &f{date}\n\n&7Appeal at: &ediscord.gg/mythicpvp"
+    kicked: "&6&l⚠ &eYou have been kicked from the server!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}"
+    warned: "&e&l⚠ &6You have received a warning!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}\n&7Please follow the server rules."
+    muted: "&c&l🔇 &cYou have been muted!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}\n&7Duration: &f{duration}\n&7Expires: &f{expires}"
+    muted_permanent: "&c&l🔇 &cYou have been permanently muted!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}"
+    blacklisted: "&4&l✖ &cYou have been blacklisted from this server!\n\n&7Reason: &f{reason}\n&7Staff: &f{staff}\n&7Date: &f{date}\n\n&4This is a permanent punishment."
+
+  # Command success messages (sent to staff)
+  ban:
+    success: "&a&l✓ &aSuccessfully banned &e{target} &afor: &f{reason}"
+    success_permanent: "&a&l✓ &aSuccessfully permanently banned &e{target} &afor: &f{reason}"
+    success_temporary: "&a&l✓ &aSuccessfully banned &e{target} &afor &e{duration} &afor: &f{reason}"
+    already_banned: "&cPlayer &e{target} &cis already banned!"
+    broadcast: "&c&l⚠ &e{target} &chas been banned by &e{staff} &cfor: &f{reason}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been banned by &e{staff} &7for: &f{reason}"
+
+  ipban:
+    success: "&a&l✓ &aSuccessfully IP banned &e{target} &afor: &f{reason}"
+    already_banned: "&cPlayer &e{target} &cis already IP banned!"
+    broadcast: "&c&l⚠ &e{target} &chas been IP banned by &e{staff} &cfor: &f{reason}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been IP banned by &e{staff} &7for: &f{reason}"
+
+  tempban:
+    success: "&a&l✓ &aSuccessfully temp banned &e{target} &afor &e{duration} &afor: &f{reason}"
+    already_banned: "&cPlayer &e{target} &cis already banned!"
+    broadcast: "&c&l⚠ &e{target} &chas been temporarily banned for &e{duration} &cby &e{staff} &cfor: &f{reason}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been temporarily banned for &e{duration} &7by &e{staff} &7for: &f{reason}"
+
+  unban:
+    success: "&a&l✓ &aSuccessfully unbanned &e{target}"
+    not_banned: "&cPlayer &e{target} &cis not banned!"
+    broadcast: "&a&l✓ &e{target} &ahas been unbanned by &e{staff}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been unbanned by &e{staff}"
+
+  kick:
+    success: "&a&l✓ &aSuccessfully kicked &e{target} &afor: &f{reason}"
+    not_online: "&cPlayer &e{target} &cis not online!"
+    broadcast: "&6&l⚠ &e{target} &6has been kicked by &e{staff} &6for: &f{reason}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been kicked by &e{staff} &7for: &f{reason}"
+
+  warn:
+    success: "&a&l✓ &aSuccessfully warned &e{target} &afor: &f{reason}"
+    broadcast: "&e&l⚠ &e{target} &6has been warned by &e{staff} &6for: &f{reason}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been warned by &e{staff} &7for: &f{reason}"
+
+  mute:
+    success: "&a&l✓ &aSuccessfully muted &e{target} &afor: &f{reason}"
+    success_permanent: "&a&l✓ &aSuccessfully permanently muted &e{target} &afor: &f{reason}"
+    success_temporary: "&a&l✓ &aSuccessfully muted &e{target} &afor &e{duration} &afor: &f{reason}"
+    already_muted: "&cPlayer &e{target} &cis already muted!"
+    broadcast: "&c&l🔇 &e{target} &chas been muted by &e{staff} &cfor: &f{reason}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been muted by &e{staff} &7for: &f{reason}"
+
+  unmute:
+    success: "&a&l✓ &aSuccessfully unmuted &e{target}"
+    not_muted: "&cPlayer &e{target} &cis not muted!"
+    broadcast: "&a&l✓ &e{target} &ahas been unmuted by &e{staff}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been unmuted by &e{staff}"
+
+  blacklist:
+    success: "&a&l✓ &aSuccessfully blacklisted &e{target} &afor: &f{reason}"
+    already_blacklisted: "&cPlayer &e{target} &cis already blacklisted!"
+    broadcast: "&4&l✖ &e{target} &4has been blacklisted by &e{staff} &4for: &f{reason}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been blacklisted by &e{staff} &7for: &f{reason}"
+
+  unblacklist:
+    success: "&a&l✓ &aSuccessfully unblacklisted &e{target}"
+    not_blacklisted: "&cPlayer &e{target} &cis not blacklisted!"
+    broadcast: "&a&l✓ &e{target} &ahas been unblacklisted by &e{staff}"
+    broadcast_silent: "&8[Silent] &e{target} &7has been unblacklisted by &e{staff}"
+
+  # Check punishments command
+  check:
+    header: "&e&l--- Punishments for {target} ---"
+    no_punishments: "&7No punishments found for &e{target}&7."
+    active_header: "&c&lActive Punishments:"
+    inactive_header: "&7&lInactive Punishments:"
+    punishment_format: "&8• &e{type} &7by &e{staff} &7for &f{reason} &8({date})"
+    active_format: "&c• &e{type} &7by &e{staff} &7for &f{reason} &8({date})"
+    expires_format: "&7Expires: &f{expires}"
+    permanent_format: "&7Permanent"
+
+# Admin command messages
+admin:
+  header: "&e&l--- Punishment Admin ---"
+  usage:
+    stats: "&e/punadmin stats &7- View punishment statistics"
+    queue: "&e/punadmin queue &7- View queue information"
+    cache: "&e/punadmin cache [player] &7- Clear cache or view player cache"
+    cleanup: "&e/punadmin cleanup &7- Clean up expired punishments"
+    test: "&e/punadmin test &7- Run system tests"
+  
+  error: "&cError: {error}"
+  player_not_found: "&cPlayer '{player}' not found!"
+  
+  stats:
+    header: "&e&l--- Punishment Statistics ---"
+    total: "&ePunishments in database: &f{count}"
+    active: "&eActive punishments: &f{count}"
+    queue_size: "&eQueue size: &f{count}"
+    processed: "&eProcessed this session: &f{count}"
+    failed: "&eFailed this session: &f{count}"
+    queue_status: "&eQueue status: &f{status}"
+    by_type: "&e&l--- Punishments by Type ---"
+    type_entry: "&e{type}: &f{count}"
+  
+  queue:
+    header: "&e&l--- Punishment Queue ---"
+    disabled: "&cPunishment queue is disabled!"
+    size: "&eQueue size: &f{count}"
+    processed: "&eProcessed: &f{count}"
+    failed: "&eFailed: &f{count}"
+    status: "&eStatus: &f{status}"
+    success_rate: "&eSuccess rate: &f{rate}%"
+  
+  cache:
+    disabled: "&cPunishment cache is disabled!"
+    cleared: "&aCleared cache for '{player}' - {count} entries removed."
+  
+  cleanup:
+    starting: "&eStarting cleanup of expired punishments..."
+    success: "&aCleanup completed! Removed {count} expired punishments."
+    none: "&eNo expired punishments found to clean up."
+  
+  test:
+    starting: "&eRunning punishment system tests..."
+    results: "&e&l--- Test Results ---"
+    cache_time: "&eCache lookup time: &f{time}ms"
+    queue_size: "&eQueue size: &f{size}"
+    queue_health: "&eQueue health: &f{health}"
+
+# Chat messages (additional)
+chat:
+  clear:
+    success: "&aChat has been cleared!"
+    broadcast: "&e&lChat has been cleared by a staff member."
+  mute:
+    success: "&aChat has been muted!"
+    broadcast: "&cChat has been muted by a staff member."
+    already_muted: "&cChat is already muted!"
+  unmute:
+    success: "&aChat has been unmuted!"
+    broadcast: "&aChat has been unmuted by a staff member."
+    not_muted: "&cChat is not currently muted!"
+  slow:
+    success: "&aChat slow mode set to {delay} seconds!"
+    disabled: "&aChat slow mode has been disabled!"
+    broadcast_enabled: "&e&lChat slow mode enabled: {delay} second delay."
+    broadcast_disabled: "&a&lChat slow mode has been disabled."
+    invalid_duration: "&cInvalid duration! Use format: 5s, 10s, 1m, etc. (Max: 5m)"
+  muted: "&cYou are currently muted and cannot send messages!"
+  slow: "&cChat is in slow mode! Please wait {time} seconds before sending another message."
+
+# Command usage messages
+commands:
+  ban:
+    usage: "&cUsage: /ban <player> [reason] [-s] [-c]"
+    description: "&7[-s] punishes the player silently and punishment message will not be broadcasted to everyone."
+    description2: "&7[-c] clears punished player's inventory upon receiving punishment."
+  tempban:
+    usage: "&cUsage: /tempban <player> <duration> [reason] [-s] [-c]"
+    description: "&7[-s] punishes the player silently and punishment message will not be broadcasted to everyone."
+    description2: "&7[-c] clears punished player's inventory upon receiving punishment."
+  ipban:
+    usage: "&cUsage: /ipban <player> [reason] [-s] [-c]"
+    description: "&7[-s] punishes the player silently and punishment message will not be broadcasted to everyone."
+    description2: "&7[-c] clears punished player's inventory upon receiving punishment."
+  unban:
+    usage: "&cUsage: /unban <player> [-s]"
+    description: "&7[-s] performs the action silently and message will not be broadcasted to everyone."
+  kick:
+    usage: "&cUsage: /kick <player> [reason] [-s]"
+    description: "&7[-s] punishes the player silently and punishment message will not be broadcasted to everyone."
+  warn:
+    usage: "&cUsage: /warn <player> [reason] [-s]"
+    description: "&7[-s] punishes the player silently and punishment message will not be broadcasted to everyone."
+  mute:
+    usage: "&cUsage: /mute <player> [duration] [reason] [-s]"
+    description: "&7[-s] punishes the player silently and punishment message will not be broadcasted to everyone."
+  unmute:
+    usage: "&cUsage: /unmute <player> [-s]"
+    description: "&7[-s] performs the action silently and message will not be broadcasted to everyone."
+  checkpunishments:
+    usage: "&cUsage: /checkpunishments <player>"
+    description: "&7View all punishments for a specific player."
+  blacklist:
+    usage: "&cUsage: /blacklist <player> [reason] [-s]"
+    description: "&7[-s] punishes the player silently and punishment message will not be broadcasted to everyone."
+  unblacklist:
+    usage: "&cUsage: /unblacklist <player> [-s]"
+    description: "&7[-s] performs the action silently and message will not be broadcasted to everyone."
+

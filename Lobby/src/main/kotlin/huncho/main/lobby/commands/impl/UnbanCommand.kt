@@ -4,8 +4,10 @@ import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.api.PunishmentApiResult
 import huncho.main.lobby.models.PunishmentRevokeRequest
 import huncho.main.lobby.utils.MessageUtils
+import huncho.main.lobby.utils.PlayerLookupUtils
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import net.minestom.server.MinecraftServer
 import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
 import net.minestom.server.entity.Player
@@ -85,8 +87,18 @@ class UnbanCommand(private val plugin: LobbyPlugin) : Command("unban") {
     private fun executeUnbanPunishment(player: Player, target: String, reason: String) {
         GlobalScope.launch {
             try {
+                MessageUtils.sendMessage(player, "&7Processing unban for $target...")
+                
+                // First, resolve the target player
+                val playerInfo = PlayerLookupUtils.resolvePlayer(target).get()
+                if (playerInfo == null) {
+                    MessageUtils.sendMessage(player, "&c✗ Player '$target' not found")
+                    MessageUtils.sendMessage(player, "&7Make sure the player has joined the server before.")
+                    return@launch
+                }
+                
                 val request = PunishmentRevokeRequest(
-                    target = target,
+                    target = playerInfo.name,
                     type = "BAN",
                     reason = reason,
                     staffId = player.uuid.toString(),
@@ -95,19 +107,33 @@ class UnbanCommand(private val plugin: LobbyPlugin) : Command("unban") {
                 
                 val result = plugin.radiumPunishmentAPI.revokePunishment(request)
                 
-                val message = if (result.isSuccess) {
-                    val response = (result as PunishmentApiResult.Success).response
-                    "&aSuccessfully unbanned ${response.target}: ${response.message}"
-                } else {
-                    "&cFailed to unban $target: ${result.getErrorMessage()}"
+                when {
+                    result.isSuccess -> {
+                        val response = (result as PunishmentApiResult.Success).response
+                        MessageUtils.sendMessage(player, "&a✓ Successfully unbanned ${response.target}")
+                        MessageUtils.sendMessage(player, "&7Reason: $reason")
+                        
+                        // Broadcast to staff if enabled
+                        MinecraftServer.getConnectionManager().onlinePlayers.forEach { staff ->
+                            if (staff != player && plugin.radiumIntegration.hasPermission(staff.uuid, "radium.staff").join()) {
+                                MessageUtils.sendMessage(staff, "&a${player.username} unbanned ${response.target}: $reason")
+                            }
+                        }
+                        
+                        plugin.logger.info("${player.username} successfully unbanned ${playerInfo.name} (${playerInfo.uuid}) for: $reason")
+                    }
+                    result.isError -> {
+                        val errorMessage = result.getErrorMessage() ?: "Unknown error"
+                        MessageUtils.sendMessage(player, "&c✗ Failed to unban ${playerInfo.name}")
+                        MessageUtils.sendMessage(player, "&7Error: $errorMessage")
+                        plugin.logger.warn("${player.username} failed to unban ${playerInfo.name}: $errorMessage")
+                    }
                 }
                 
-                MessageUtils.sendMessage(player, message)
-                LobbyPlugin.logger.info("${player.username} attempted to unban $target - Success: ${result.isSuccess}")
-                
             } catch (e: Exception) {
-                MessageUtils.sendMessage(player, "&cAn error occurred while processing the unban: ${e.message}")
-                LobbyPlugin.logger.error("Error processing unban command from ${player.username}", e)
+                MessageUtils.sendMessage(player, "&c✗ An error occurred while processing the unban")
+                MessageUtils.sendMessage(player, "&7Please contact an administrator if this persists.")
+                plugin.logger.error("Error processing unban command from ${player.username} for target $target", e)
             }
         }
     }

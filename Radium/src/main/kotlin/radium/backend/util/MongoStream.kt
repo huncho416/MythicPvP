@@ -96,17 +96,27 @@ class MongoStream(val logger: ComponentLogger) {
                     // For simple passwords, try without URL encoding first
                     connectionStringBuilder.append("$username:$password@")
                     logger.info(Component.text("Using authentication with username: $username", NamedTextColor.YELLOW))
+                } else {
+                    logger.info(Component.text("Using no authentication for MongoDB connection", NamedTextColor.YELLOW))
                 }
 
                 // Add host and port
                 connectionStringBuilder.append("$host:$port")
                 
-                // Add database and authentication source - use admin for auth but radium for operations
-                connectionStringBuilder.append("/$database?authSource=admin")
+                // Add database and authentication source only if using authentication
+                if (username != null && password != null) {
+                    connectionStringBuilder.append("/$database?authSource=admin")
+                } else {
+                    connectionStringBuilder.append("/$database")
+                }
 
                 // Create connection string
                 val connectionString = ConnectionString(connectionStringBuilder.toString())
-                logger.info(Component.text("MongoDB connection string: mongodb://$username:****@$host:$port/$database?authSource=admin", NamedTextColor.YELLOW))
+                if (username != null && password != null) {
+                    logger.info(Component.text("MongoDB connection string: mongodb://$username:****@$host:$port/$database?authSource=admin", NamedTextColor.YELLOW))
+                } else {
+                    logger.info(Component.text("MongoDB connection string: mongodb://$host:$port/$database", NamedTextColor.YELLOW))
+                }
 
                 // Build client settings with specific authentication configuration
                 val settings = MongoClientSettings.builder()
@@ -299,5 +309,24 @@ class MongoStream(val logger: ComponentLogger) {
         logger.info("  Profile ranks size: ${profile.getRanks().size}")
         
         return profile
+    }
+    
+    /**
+     * Get all profiles from MongoDB for username search
+     */
+    suspend fun getAllProfiles(): List<radium.backend.player.Profile> {
+        try {
+            val collection = getDatabase().getCollection(PROFILES_COLLECTION)
+            val profiles = mutableListOf<radium.backend.player.Profile>()
+            
+            // For now, return empty list and let the API rely on other methods
+            // This method is only used as a fallback for username search
+            logger.debug("getAllProfiles called - returning empty list as fallback")
+            return emptyList()
+            
+        } catch (e: Exception) {
+            logger.error("Error getting all profiles: ${e.message}")
+            return emptyList()
+        }
     }
 }

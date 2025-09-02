@@ -4,8 +4,10 @@ import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.api.PunishmentApiResult
 import huncho.main.lobby.models.PunishmentRequest
 import huncho.main.lobby.utils.MessageUtils
+import huncho.main.lobby.utils.PlayerLookupUtils
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import net.minestom.server.MinecraftServer
 import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
 import net.minestom.server.entity.Player
@@ -81,32 +83,64 @@ class TempBanCommand(private val plugin: LobbyPlugin) : Command("tempban") {
     private fun executeTempBanPunishment(player: Player, target: String, duration: String, reason: String) {
         GlobalScope.launch {
             try {
+                MessageUtils.sendMessage(player, "&7Processing temporary ban for $target...")
+                
+                // First, resolve the target player
+                val playerInfo = PlayerLookupUtils.resolvePlayer(target).get()
+                if (playerInfo == null) {
+                    MessageUtils.sendMessage(player, "&c✗ Player '$target' not found")
+                    MessageUtils.sendMessage(player, "&7Make sure the player has joined the server before.")
+                    return@launch
+                }
+                
+                // Check rank weight permissions
+                val canPunish = PlayerLookupUtils.canPunish(plugin, player.uuid, playerInfo.uuid).get()
+                if (!canPunish) {
+                    val weightInfo = PlayerLookupUtils.getRankWeightInfo(plugin, player.uuid, playerInfo.uuid).get()
+                    MessageUtils.sendMessage(player, "&c✗ You cannot ban ${playerInfo.name}")
+                    MessageUtils.sendMessage(player, "&7Your rank weight (${weightInfo.first}) is not higher than theirs (${weightInfo.second})")
+                    return@launch
+                }
+                
                 val request = PunishmentRequest(
-                    target = target,
+                    target = playerInfo.name, // Use player name as target
                     type = "BAN", // Radium uses BAN with duration for temporary bans
                     reason = reason,
                     staffId = player.uuid.toString(),
                     duration = duration,
                     silent = false,
-                    clearInventory = false,
-                    priority = PunishmentRequest.Priority.NORMAL
+                    clearInventory = false
                 )
                 
                 val result = plugin.radiumPunishmentAPI.issuePunishment(request)
                 
-                val message = if (result.isSuccess) {
-                    val response = (result as PunishmentApiResult.Success).response
-                    "&aSuccessfully banned ${response.target} for $duration: ${response.message}"
-                } else {
-                    "&cFailed to ban $target: ${result.getErrorMessage()}"
+                when {
+                    result.isSuccess -> {
+                        val response = (result as PunishmentApiResult.Success).response
+                        MessageUtils.sendMessage(player, "&a✓ Successfully banned ${response.target} for $duration")
+                        MessageUtils.sendMessage(player, "&7Reason: $reason")
+                        
+                        // Broadcast to staff if enabled
+                        MinecraftServer.getConnectionManager().onlinePlayers.forEach { staff ->
+                            if (staff != player && plugin.radiumIntegration.hasPermission(staff.uuid, "radium.staff").join()) {
+                                MessageUtils.sendMessage(staff, "&c${player.username} temporarily banned ${response.target} for $duration: $reason")
+                            }
+                        }
+                        
+                        plugin.logger.info("${player.username} successfully banned ${playerInfo.name} (${playerInfo.uuid}) for $duration: $reason")
+                    }
+                    result.isError -> {
+                        val errorMessage = result.getErrorMessage() ?: "Unknown error"
+                        MessageUtils.sendMessage(player, "&c✗ Failed to ban ${playerInfo.name}")
+                        MessageUtils.sendMessage(player, "&7Error: $errorMessage")
+                        plugin.logger.warn("${player.username} failed to ban ${playerInfo.name}: $errorMessage")
+                    }
                 }
                 
-                MessageUtils.sendMessage(player, message)
-                LobbyPlugin.logger.info("${player.username} attempted to tempban $target for $duration - Success: ${result.isSuccess}")
-                
             } catch (e: Exception) {
-                MessageUtils.sendMessage(player, "&cAn error occurred while processing the ban: ${e.message}")
-                LobbyPlugin.logger.error("Error processing tempban command from ${player.username}", e)
+                MessageUtils.sendMessage(player, "&c✗ An error occurred while processing the ban")
+                MessageUtils.sendMessage(player, "&7Please contact an administrator if this persists.")
+                plugin.logger.error("Error processing tempban command from ${player.username} for target $target", e)
             }
         }
     }

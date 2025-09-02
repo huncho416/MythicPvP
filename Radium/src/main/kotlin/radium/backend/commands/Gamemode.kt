@@ -1,20 +1,24 @@
 package radium.backend.commands
 
 import com.velocitypowered.api.proxy.Player
+import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier
 import kotlinx.coroutines.launch
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import revxrsal.commands.annotation.Command
 import revxrsal.commands.annotation.Optional
 import revxrsal.commands.velocity.annotation.CommandPermission
 import radium.backend.Radium
 import radium.backend.annotations.OnlinePlayers
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.IOException
 
 @Command("gamemode")
 @CommandPermission("radium.staff")
 class Gamemode(private val radium: Radium) {
+
+    companion object {
+        val GAMEMODE_CHANNEL = MinecraftChannelIdentifier.create("radium", "gamemode")
+    }
 
     // Main gamemode command with aliases
     @Command("gamemode <gamemode>", "gm <gamemode>")
@@ -56,54 +60,31 @@ class Gamemode(private val radium: Radium) {
             return
         }
 
-        // Execute the gamemode command on the backend server
+        // Execute the gamemode command via plugin messaging
         try {
-            // Use HTTP API to communicate with the Minestom lobby
-            val client = OkHttpClient()
-            val json = """
-                {
-                    "type": "gamemode",
-                    "target": "${targetPlayer.uniqueId}",
-                    "targetName": "${targetPlayer.username}",
-                    "gamemode": "$normalizedGamemode",
-                    "executor": "${actor.username}",
-                    "server": "${currentServer.serverInfo.name}"
-                }
-            """.trimIndent()
+            val out = ByteArrayOutputStream()
+            val dataOut = DataOutputStream(out)
             
-            // Get the lobby server URL - you'll need to configure this
-            val lobbyUrl = radium.yamlFactory.getString("lobby.api.url", "http://localhost:8080")
+            // Write gamemode data
+            dataOut.writeUTF("SET_GAMEMODE")
+            dataOut.writeUTF(targetPlayer.uniqueId.toString())
+            dataOut.writeUTF(targetPlayer.username)
+            dataOut.writeUTF(normalizedGamemode)
+            dataOut.writeUTF(actor.username)
             
-            val requestBody = json.toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
-                .url("$lobbyUrl/api/gamemode")
-                .post(requestBody)
-                .addHeader("Content-Type", "application/json")
-                .build()
+            val messageBytes = out.toByteArray()
             
-            // Make async HTTP call
-            radium.scope.launch {
-                try {
-                    client.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            // Send confirmation message
-                            if (target != null && target != actor.username) {
-                                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.gamemode.success_other", 
-                                    "gamemode" to normalizedGamemode, 
-                                    "target" to targetPlayer.username))
-                            } else {
-                                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.gamemode.success_self", 
-                                    "gamemode" to normalizedGamemode))
-                            }
-                        } else {
-                            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.gamemode.redis_error"))
-                            radium.logger.warn("Failed to set gamemode via API: ${response.code} - ${response.message}")
-                        }
-                    }
-                } catch (e: IOException) {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.gamemode.redis_error"))
-                    radium.logger.warn("Failed to communicate with lobby API: ${e.message}")
-                }
+            // Send to the target player's current server
+            currentServer.sendPluginMessage(GAMEMODE_CHANNEL, messageBytes)
+            
+            // Send confirmation message
+            if (target != null && target != actor.username) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.gamemode.success_other", 
+                    "gamemode" to normalizedGamemode, 
+                    "target" to targetPlayer.username))
+            } else {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.gamemode.success_self", 
+                    "gamemode" to normalizedGamemode))
             }
             
         } catch (e: Exception) {

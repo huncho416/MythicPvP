@@ -1,0 +1,14 @@
+{
+  "id": "lobby",
+  "name": "Lobby",
+  "version": "1.0-SNAPSHOT",
+  "authors": ["MythicPvP Team"],
+  "description": "MythicPvP Lobby Plugin",
+  "main": "huncho.main.lobby.LobbyPlugin",
+  "dependencies": [
+    {
+      "id": "radium",
+      "optional": false
+    }
+  ]
+}

@@ -4,11 +4,14 @@ import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.api.PunishmentApiResult
 import huncho.main.lobby.models.PunishmentRequest
 import huncho.main.lobby.utils.MessageUtils
+import huncho.main.lobby.utils.PlayerLookupUtils
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.future.await
 import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
 import net.minestom.server.entity.Player
+import net.kyori.adventure.text.Component
 
 class BlacklistCommand(private val plugin: LobbyPlugin) : Command("blacklist") {
     
@@ -77,15 +80,21 @@ class BlacklistCommand(private val plugin: LobbyPlugin) : Command("blacklist") {
     private fun executeBlacklistPunishment(player: Player, target: String, reason: String) {
         GlobalScope.launch {
             try {
+                // First resolve the target player
+                val lookupResult = PlayerLookupUtils.resolvePlayer(target).await()
+                if (lookupResult == null) {
+                    player.sendMessage(Component.text("§cPlayer not found: $target"))
+                    return@launch
+                }
+                
                 val request = PunishmentRequest(
-                    target = target,
+                    target = lookupResult.name,
                     type = "BLACKLIST",
                     reason = reason,
                     staffId = player.uuid.toString(),
                     duration = null, // Blacklists are permanent
                     silent = false,
-                    clearInventory = true, // Blacklists clear inventory by default
-                    priority = PunishmentRequest.Priority.HIGH
+                    clearInventory = true // Blacklists clear inventory by default
                 )
                 
                 val result = plugin.radiumPunishmentAPI.issuePunishment(request)

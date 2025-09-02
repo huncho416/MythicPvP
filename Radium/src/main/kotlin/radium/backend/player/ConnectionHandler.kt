@@ -534,4 +534,70 @@ class ConnectionHandler(private val radium: Radium) {
             radium.logger.info("No lobby server configured - disconnected ${player.username}")
         }
     }
+    
+    /**
+     * Find a player profile by username, checking memory cache, Redis, and MongoDB
+     * This is used for offline player lookups in the API
+     */
+    suspend fun findPlayerProfileByUsername(username: String): radium.backend.player.Profile? {
+        // First check memory cache
+        val memoryProfile = profileCache.values.find { 
+            it.username.equals(username, ignoreCase = true) 
+        }
+        if (memoryProfile != null) {
+            radium.logger.debug("Found profile for $username in memory cache")
+            return memoryProfile
+        }
+        
+        // Try to convert username to UUID first
+        val uuid = try {
+            // If it's already a valid UUID, use it directly
+            UUID.fromString(username)
+        } catch (e: IllegalArgumentException) {
+            // Not a valid UUID, assume it's a username
+            val onlinePlayer = radium.server.allPlayers.find { 
+                it.username.equals(username, ignoreCase = true) 
+            }
+            
+            if (onlinePlayer != null) {
+                onlinePlayer.uniqueId
+            } else {
+                // Try to get UUID from Mojang API (for online mode servers)
+                fetchUuidFromMojang(username)
+            }
+        }
+        
+        if (uuid != null) {
+            // Check Redis cache
+            val (redisProfile, redisMetadata) = radium.lettuceCache.getProfile(uuid)
+            if (redisMetadata["found"] == true && redisProfile != null) {
+                radium.logger.debug("Found profile for $username in Redis cache")
+                return redisProfile
+            }
+            
+            // Check MongoDB
+            val (mongoProfile, mongoMetadata) = radium.mongoStream.loadProfileFromDatabase(uuid.toString())
+            if (mongoMetadata["found"] == true && mongoProfile != null) {
+                radium.logger.debug("Found profile for $username in MongoDB")
+                return mongoProfile
+            }
+        }
+        
+        // If UUID lookup failed, search MongoDB directly by username
+        try {
+            val allProfiles = radium.mongoStream.getAllProfiles()
+            val foundProfile = allProfiles.find { 
+                it.username.equals(username, ignoreCase = true) 
+            }
+            if (foundProfile != null) {
+                radium.logger.debug("Found profile for $username via MongoDB username search")
+                return foundProfile
+            }
+        } catch (e: Exception) {
+            radium.logger.warn("Error searching profiles by username: ${e.message}")
+        }
+        
+        radium.logger.debug("No profile found for username: $username")
+        return null
+    }
 }

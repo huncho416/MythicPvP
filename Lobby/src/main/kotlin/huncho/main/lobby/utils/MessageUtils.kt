@@ -44,10 +44,30 @@ object MessageUtils {
     }
     
     /**
-     * Colorize a string using legacy color codes (&)
+     * Cleans corrupted color codes that may come from database UTF-8 encoding issues
+     * Fixes corruption where & becomes ∩┐╜ and other encoding problems
+     */
+    fun cleanColorCodes(text: String): String {
+        if (text.isBlank()) return text
+        
+        return text
+            .replace("∩┐╜", "&")     // Fix UTF-8 corruption of &
+            .replace("§", "&")      // Normalize section signs to ampersand
+            .replace("∩", "&")      // Additional corruption patterns
+            .replace("┐", "")       // Remove stray corruption characters
+            .replace("╜", "")       // Remove stray corruption characters
+            .replace("Â", "")       // Remove UTF-8 BOM corruption
+            .replace("âž§", "&")    // Another corruption pattern
+            .replace(Regex("&([^0-9a-fk-orA-FK-OR])"), "")  // Remove invalid codes
+            .replace(Regex("&{2,}"), "&")  // Replace multiple & with single &
+    }
+
+    /**
+     * Colorize a string using legacy color codes (&) with corruption cleaning
      */
     fun colorize(text: String): Component {
-        return legacySerializer.deserialize(text)
+        val cleanText = cleanColorCodes(text)
+        return legacySerializer.deserialize(cleanText)
     }
     
     /**

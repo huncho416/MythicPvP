@@ -224,7 +224,9 @@ class Friend(private val radium: Radium) {
         
         // Get all friends
         val friends = actorProfile.getFriends()
-        val header = yamlFactory.getMessageComponent("friend.list.header")
+        val header = yamlFactory.getMessageComponent("friend.list.header",
+            "count" to friends.size.toString(),
+            "max" to "100") // TODO: Get actual max from config
 
         actor.sendMessage(header)
         
@@ -245,7 +247,8 @@ class Friend(private val radium: Radium) {
                     val serverName = if (server.isPresent) server.get().serverInfo.name else "Unknown"
                     
                     val onlineFormat = yamlFactory.getMessageComponent("friend.list.online_format",
-                        "username" to friendProfile.username)
+                        "name" to friendProfile.username,
+                        "server" to serverName)
                     
                     val hoverText = yamlFactory.getMessage("friend.list.online_hover",
                         "server" to serverName)
@@ -264,7 +267,8 @@ class Friend(private val radium: Radium) {
                     }
                     
                     val offlineFormat = yamlFactory.getMessageComponent("friend.list.offline_format",
-                        "username" to friendProfile.username)
+                        "name" to friendProfile.username,
+                        "time" to formattedLastSeen)
                     
                     val hoverText = yamlFactory.getMessage("friend.list.offline_hover",
                         "lastSeen" to formattedLastSeen)

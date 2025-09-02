@@ -1047,27 +1047,47 @@ class Profile {
     }
 
     /**
-     * Gets the effective rank for this player, falling back to default rank if none assigned
+     * Gets the highest ranked rank for this player using only cached data (synchronous)
+     *
+     * @param rankManager The rank manager to get rank data from
+     * @return The highest weighted rank, or null if no ranks found in cache
      */
-    suspend fun getEffectiveRank(rankManager: RankManager): RankManager.Rank {
-        return getHighestRank(rankManager) ?: getDefaultRank(rankManager)
+    fun getHighestRankCached(rankManager: RankManager): RankManager.Rank? {
+        val playerRanks = getRanks()
+        if (playerRanks.isEmpty()) return null
+        
+        var highestRank: RankManager.Rank? = null
+        var highestWeight = Int.MIN_VALUE
+        
+        for (rankName in playerRanks) {
+            val rank = rankManager.getCachedRank(rankName)
+            if (rank != null && rank.weight > highestWeight) {
+                highestWeight = rank.weight
+                highestRank = rank
+            }
+        }
+        
+        return highestRank
     }
-    
+
     /**
-     * Gets the default rank for players with no assigned ranks
+     * Gets all rank objects for this player using only cached data (synchronous)
+     *
+     * @param rankManager The rank manager to get rank data from
+     * @return List of Rank objects for this player
      */
-    private suspend fun getDefaultRank(rankManager: RankManager): RankManager.Rank {
-        return rankManager.getRank("Default") ?: RankManager.Rank(
-            name = "Default",
-            prefix = "&7",
-            weight = 0,
-            color = "&7",
-            permissions = setOf(),
-            inherits = listOf(),
-            suffix = "",
-            tabPrefix = "",
-            tabSuffix = ""
-        )
+    fun getRanksCached(rankManager: RankManager): List<RankManager.Rank> {
+        val playerRanks = getRanks()
+        val rankObjects = mutableListOf<RankManager.Rank>()
+        
+        for (rankName in playerRanks) {
+            val rank = rankManager.getCachedRank(rankName)
+            if (rank != null) {
+                rankObjects.add(rank)
+            }
+        }
+        
+        return rankObjects
     }
 
     /**

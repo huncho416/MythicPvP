@@ -24,23 +24,27 @@ fun main() {
     }
     
     try {
-        // Initialize Minestom server
-        val minecraftServer = MinecraftServer.init()
+        // Configure Velocity support FIRST (before anything else)
+        // Load basic configuration first
+        val configManager = huncho.main.lobby.config.ConfigManager(LobbyPlugin)
+        configManager.loadAllConfigs()
         
-        // Initialize our lobby plugin first to load config
-        LobbyPlugin.initialize()
-        
-        // Configure Velocity support  
-        val velocityEnabled = LobbyPlugin.configManager.getBoolean(LobbyPlugin.configManager.mainConfig, "server.velocity.enabled", true)
+        val velocityEnabled = configManager.getBoolean(configManager.mainConfig, "server.velocity.enabled", true)
         if (velocityEnabled) {
-            val velocitySecret = LobbyPlugin.configManager.getString(LobbyPlugin.configManager.mainConfig, "server.velocity.secret", "")
+            val velocitySecret = configManager.getString(configManager.mainConfig, "server.velocity.secret", "")
             if (velocitySecret.isNotEmpty() && velocitySecret != "your-velocity-secret-here" && velocitySecret.length >= 8) {
                 VelocityProxy.enable(velocitySecret)
-                println("✅ Velocity proxy support enabled")
+                println("✅ Velocity proxy support enabled with secret: ${velocitySecret.take(8)}...")
             } else {
-                println("⚠️ Velocity secret not configured properly")
+                println("⚠️ Velocity secret not configured properly: '$velocitySecret'")
             }
         }
+        
+        // Initialize Minestom server AFTER Velocity configuration
+        val minecraftServer = MinecraftServer.init()
+        
+        // Now initialize our lobby plugin (after MinecraftServer.init())
+        LobbyPlugin.initialize()
         
         // Handle player login - set them to spawn in the lobby instance
         MinecraftServer.getGlobalEventHandler().addListener(AsyncPlayerConfigurationEvent::class.java) { event ->

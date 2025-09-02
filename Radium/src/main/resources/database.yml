@@ -4,10 +4,7 @@
 mongodb:
   host: "localhost"
   port: 27017
-  username: "radium"
-  password: "radium123"
   database: "radium"
-  authSource: "admin"
 
 redis:
   host: "localhost"

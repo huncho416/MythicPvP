@@ -84,8 +84,7 @@ class KickCommand(private val plugin: LobbyPlugin) : Command("kick") {
                     staffId = player.uuid.toString(),
                     duration = null, // Kicks don't have duration
                     silent = false,
-                    clearInventory = false,
-                    priority = PunishmentRequest.Priority.HIGH // Kicks are immediate
+                    clearInventory = false
                 )
                 
                 val result = plugin.radiumPunishmentAPI.issuePunishment(request)

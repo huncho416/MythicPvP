@@ -34,7 +34,6 @@ class HotbarProtectionListener(private val plugin: LobbyPlugin, private val moni
         if (mainHandItem != null && mainHandItem.material() != Material.AIR) {
             // Use material-based identification since component access is problematic
             if (monitor.isJoinItemByMaterial(mainHandItem.material())) {
-                plugin.logger.debug("[HotbarProtection] Prevented ${player.username} from swapping join item to offhand: ${mainHandItem.material().name()}")
                 return EventListener.Result.INVALID
             }
         }
@@ -43,7 +42,6 @@ class HotbarProtectionListener(private val plugin: LobbyPlugin, private val moni
         if (offHandItem != null && offHandItem.material() != Material.AIR) {
             // Use material-based identification since component access is problematic
             if (monitor.isJoinItemByMaterial(offHandItem.material())) {
-                plugin.logger.debug("[HotbarProtection] Prevented ${player.username} from swapping join item from offhand: ${offHandItem.material().name()}")
                 return EventListener.Result.INVALID
             }
         }

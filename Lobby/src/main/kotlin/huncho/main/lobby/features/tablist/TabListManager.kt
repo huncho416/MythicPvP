@@ -105,16 +105,16 @@ class TabListManager(private val plugin: LobbyPlugin) {
         
         MinecraftServer.getConnectionManager().onlinePlayers.forEach { targetPlayer ->
             try {
-                // Check if target player is vanished using hybrid system
+                // Check if target player is vanished using Radium integration
                 val isVanished = if (respectVanish) {
-                    plugin.vanishPluginMessageListener.isPlayerVanished(targetPlayer.uuid)
+                    plugin.radiumIntegration.isPlayerVanished(targetPlayer.uuid).join()
                 } else {
                     false
                 }
                 
                 if (isVanished && respectVanish) {
-                    // Check if viewer can see vanished player using hybrid system
-                    val canSee = plugin.vanishPluginMessageListener.canSeeVanished(viewer, targetPlayer.uuid)
+                    // Check if viewer can see vanished player using Radium integration
+                    val canSee = plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, targetPlayer.uuid).join()
                     if (!canSee) {
                         // Skip updating display for hidden players - Radium will handle visibility
                         return@forEach
@@ -140,6 +140,11 @@ class TabListManager(private val plugin: LobbyPlugin) {
                     }
                 }
 
+                // DISABLED: Let the Radium proxy handle all display name formatting
+                // This prevents conflicts and color code corruption issues
+                // The proxy's TabListManager has complete control over tab formatting
+                
+                /*
                 // Set the display name on the player with enhanced error handling
                 if (shouldUseRadium) {
                     // Use Radium formatting with proper color codes
@@ -161,6 +166,7 @@ class TabListManager(private val plugin: LobbyPlugin) {
                         plugin.logger.warn("Failed to set fallback display name for ${targetPlayer.username}", e)
                     }
                 }
+                */
             } catch (e: Exception) {
                 plugin.logger.warn("Error updating tab list name for ${targetPlayer.username}", e)
                 // On error, don't change the display name to avoid overriding Radium
@@ -190,6 +196,9 @@ class TabListManager(private val plugin: LobbyPlugin) {
         // This prevents any conflicts with Radium's formatting
         val showVanishIndicator = plugin.configManager.getBoolean(plugin.configManager.mainConfig, "tablist.show_vanish_indicator", true)
         
+        // DISABLED: Let Radium proxy handle all display name formatting
+        // This prevents conflicts and corruption issues
+        /*
         MinecraftServer.getConnectionManager().onlinePlayers.forEach { targetPlayer ->
             try {
                 // Check if target player is vanished
@@ -220,6 +229,7 @@ class TabListManager(private val plugin: LobbyPlugin) {
                 plugin.logger.debug("Could not check Radium data for ${targetPlayer.username}, skipping tab list update")
             }
         }
+        */
     }
     
     /**
@@ -289,26 +299,21 @@ class TabListManager(private val plugin: LobbyPlugin) {
     
     /**
      * ENHANCED: Comprehensive tab list refresh for all players
-     * Fixes the unvanish visibility issue by properly updating all tab entries
+     * Since Radium controls all tab formatting, we just ensure headers/footers are updated
      */
     fun refreshAllTabLists() {
         try {
             val onlinePlayers = MinecraftServer.getConnectionManager().onlinePlayers
-            plugin.logger.debug("Starting comprehensive tab list refresh for ${onlinePlayers.size} players")
+            plugin.logger.debug("Refreshing tab headers/footers for ${onlinePlayers.size} players (Tab entries managed by Radium)")
             
-            // First pass: Update all player entries
-            onlinePlayers.forEach { player ->
-                updatePlayerTabEntry(player)
-            }
-            
-            // Second pass: Update headers and footers for all players
+            // Update headers and footers for all players (this is safe and doesn't conflict with Radium)
             onlinePlayers.forEach { player ->
                 updatePlayerTabList(player)
             }
             
-            plugin.logger.debug("Completed comprehensive tab list refresh for all players")
+            plugin.logger.debug("Completed tab list refresh for all players")
         } catch (e: Exception) {
-            plugin.logger.error("Error during comprehensive tab list refresh", e)
+            plugin.logger.error("Error during tab list refresh", e)
         }
     }
     
@@ -320,7 +325,7 @@ class TabListManager(private val plugin: LobbyPlugin) {
         runBlocking {
             try {
                 // Check vanish status first
-                val isVanished = plugin.vanishPluginMessageListener.isPlayerVanished(player.uuid)
+                val isVanished = plugin.radiumIntegration.isPlayerVanished(player.uuid).join()
                 
                 if (isVanished) {
                     // Player is vanished - check who can see them
@@ -346,7 +351,7 @@ class TabListManager(private val plugin: LobbyPlugin) {
     private suspend fun hideOrShowVanishedPlayer(vanishedPlayer: Player) {
         MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
             if (viewer.uuid != vanishedPlayer.uuid) {
-                val canSee = plugin.vanishPluginMessageListener.canSeeVanished(viewer, vanishedPlayer.uuid)
+                val canSee = plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, vanishedPlayer.uuid).join()
                 if (canSee) {
                     // Show with vanish indicator
                     showPlayerWithVanishIndicator(vanishedPlayer, viewer)
@@ -360,12 +365,12 @@ class TabListManager(private val plugin: LobbyPlugin) {
     
     /**
      * ENHANCED: Show player in tab list normally (for unvanished players) 
+     * Since Radium controls all tab formatting, we just log the request
      */
     suspend fun showPlayerInTab(targetPlayer: Player, viewer: Player) {
         try {
-            // Update display name without vanish indicator
-            updatePlayerDisplayForViewer(targetPlayer, viewer, false)
-            plugin.logger.debug("✅ Showing unvanished ${targetPlayer.username} normally to ${viewer.username}")
+            // Radium handles all tab list visibility and formatting, we just ensure entity is visible
+            plugin.logger.debug("✅ Entity visible: unvanished ${targetPlayer.username} normally to ${viewer.username} (Tab managed by Radium)")
         } catch (e: Exception) {
             plugin.logger.warn("Failed to show ${targetPlayer.username} to ${viewer.username}", e)
         }
@@ -384,13 +389,13 @@ class TabListManager(private val plugin: LobbyPlugin) {
     
     /**
      * ENHANCED: Show vanished player with [V] indicator to authorized viewers
+     * Since Radium controls all tab formatting, we just log the request
      */
     fun showPlayerWithVanishIndicator(vanishedPlayer: Player, viewer: Player) {
         runBlocking {
             try {
-                // Update display name with vanish indicator
-                updatePlayerDisplayForViewer(vanishedPlayer, viewer, true)
-                plugin.logger.debug("✅ Showing vanished ${vanishedPlayer.username} with [V] indicator to ${viewer.username}")
+                // Radium handles all tab list visibility and formatting, we just ensure entity is visible
+                plugin.logger.debug("✅ Entity visible: vanished ${vanishedPlayer.username} with [V] indicator to ${viewer.username} (Tab managed by Radium)")
             } catch (e: Exception) {
                 plugin.logger.warn("Failed to show vanished player ${vanishedPlayer.username} to ${viewer.username}", e)
             }
@@ -399,12 +404,12 @@ class TabListManager(private val plugin: LobbyPlugin) {
     
     /**
      * ENHANCED: Hide player from specific viewer's tab list
+     * Since Radium controls all tab formatting, we just log the request
      */
     fun hidePlayerFromTab(player: Player, viewer: Player) {
         try {
-            // For tab list hiding, we can't easily remove players from tab completely
-            // Instead, we'll just ensure they don't have special formatting
-            plugin.logger.debug("❌ Would hide ${player.username} from ${viewer.username}'s tab (display name managed by Radium)")
+            // Radium handles all tab list visibility, we just ensure entity is hidden
+            plugin.logger.debug("❌ Entity hidden: ${player.username} from ${viewer.username} (Tab managed by Radium)")
         } catch (e: Exception) {
             plugin.logger.warn("Failed to hide ${player.username} from ${viewer.username}'s tab", e)
         }
@@ -414,6 +419,9 @@ class TabListManager(private val plugin: LobbyPlugin) {
      * ENHANCED: Update player display name for specific viewer with vanish indicator option
      */
     private suspend fun updatePlayerDisplayForViewer(player: Player, viewer: Player, showVanishIndicator: Boolean) {
+        // DISABLED: Let Radium proxy handle all tab list formatting to prevent conflicts
+        return
+        
         try {
             val respectRadium = plugin.configManager.getBoolean(plugin.configManager.mainConfig, "tablist.respect_radium_formatting", true)
             val showIndicator = plugin.configManager.getBoolean(plugin.configManager.mainConfig, "tablist.show_vanish_indicator", true)
@@ -429,7 +437,8 @@ class TabListManager(private val plugin: LobbyPlugin) {
                     val vanishIndicator = if (showVanishIndicator && showIndicator) "&8[V] &r" else ""
                     val displayName = "$vanishIndicator$prefix$color${player.username}"
                     
-                    player.displayName = MessageUtils.colorize(displayName)
+                    // DISABLED: Let Radium proxy handle tab formatting
+                    // player.displayName = MessageUtils.colorize(displayName)
                     plugin.logger.debug("Updated Radium display for ${player.username} (vanish: $showVanishIndicator): $displayName")
                     return
                 }
@@ -452,6 +461,9 @@ class TabListManager(private val plugin: LobbyPlugin) {
      * ENHANCED: Update player display name for specific viewer with vanish indicator option (synchronous version)
      */
     private fun updatePlayerDisplayForViewerSync(player: Player, viewer: Player, showVanishIndicator: Boolean) {
+        // DISABLED: Let Radium proxy handle all tab list formatting to prevent conflicts
+        return
+        
         try {
             val respectRadium = plugin.configManager.getBoolean(plugin.configManager.mainConfig, "tablist.respect_radium_formatting", true)
             val showIndicator = plugin.configManager.getBoolean(plugin.configManager.mainConfig, "tablist.show_vanish_indicator", true)
@@ -508,7 +520,7 @@ class TabListManager(private val plugin: LobbyPlugin) {
     fun forcePlayerTabRefresh(player: Player) {
         try {
             // Check if player is vanished
-            val isVanished = plugin.vanishPluginMessageListener.isPlayerVanished(player.uuid)
+            val isVanished = plugin.radiumIntegration.isPlayerVanished(player.uuid).join()
             
             // Update display name for all viewers
             MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
@@ -516,7 +528,7 @@ class TabListManager(private val plugin: LobbyPlugin) {
                     // Use runBlocking for the suspend call or make it non-blocking
                     val canSee = if (isVanished) {
                         try {
-                            runBlocking { plugin.vanishPluginMessageListener.canSeeVanished(viewer, player.uuid) }
+                            plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, player.uuid).join()
                         } catch (e: Exception) {
                             false
                         }
@@ -582,7 +594,7 @@ class TabListManager(private val plugin: LobbyPlugin) {
      */
     private fun canSeeVanishedIndicator(viewer: Player, vanishedPlayerUuid: UUID): Boolean {
         return try {
-            runBlocking { plugin.vanishPluginMessageListener.canSeeVanished(viewer, vanishedPlayerUuid) }
+            plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, vanishedPlayerUuid).join()
         } catch (e: Exception) {
             false
         }

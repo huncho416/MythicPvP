@@ -46,7 +46,7 @@ class VanishEventListener(private val plugin: LobbyPlugin) {
                             }
                         }
                         
-                        plugin.logger.info("Processed vanish event for ${player.username}: $action (vanished: $isVanished)")
+
                     }
                 }
             } else {

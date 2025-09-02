@@ -13,6 +13,7 @@ import revxrsal.commands.velocity.annotation.CommandPermission
 import radium.backend.Radium
 import radium.backend.annotations.RankList
 import radium.backend.annotations.ColorList
+import radium.backend.player.TabListManager
 
 
 @Command("rank", "ranks")
@@ -25,20 +26,35 @@ class Rank(private val radium: Radium) {
     @Command("rank", "ranks")
     @CommandPermission("radium.rank.use")
     fun rankUsage(actor: Player) {
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.header"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.main"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.delete"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setprefix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setsuffix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.settabprefix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.settabsuffix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setcolor"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setweight"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.permission_add"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.permission_remove"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.inherit"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.info"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.list"))
+        // Create a formatted help message like /perm does
+        val helpText = """
+            &e&l--- Rank Management ---
+            &e/rank create <name> &7- Create a new rank
+            &e/rank delete <name> &7- Delete a rank
+            &e/rank setprefix <rank> <prefix> &7- Set rank prefix
+            &e/rank setsuffix <rank> <suffix> &7- Set rank suffix
+            &e/rank settabprefix <rank> <prefix> &7- Set tab prefix
+            &e/rank settabsuffix <rank> <suffix> &7- Set tab suffix
+            &e/rank setweight <rank> <weight> &7- Set rank weight
+            &e/rank permission add <rank> <permission> &7- Add permission
+            &e/rank permission remove <rank> <permission> &7- Remove permission
+            &e/rank inherit <rank> <inherit_rank> &7- Add inheritance
+            &e/rank info <rank> &7- View rank information
+            &e/rank list &7- List all ranks
+        """.trimIndent()
+        
+        // Send each line as a separate message with proper color parsing
+        helpText.lines().forEach { line ->
+            if (line.isNotBlank()) {
+                try {
+                    val component = TabListManager.safeParseColoredText(line)
+                    actor.sendMessage(component)
+                } catch (e: Exception) {
+                    // Fallback: send as plain text
+                    actor.sendMessage(Component.text(line.replace("&", "§")))
+                }
+            }
+        }
     }
 
     @Subcommand("create")
@@ -49,17 +65,19 @@ class Rank(private val radium: Radium) {
     ) {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.create.usage"))
+                val usageMessage = radium.yamlFactory.getMessage("rank.create.usage") ?: "&cUsage: /rank create <name>"
+                actor.sendMessage(TabListManager.safeParseColoredText(usageMessage))
                 return
             }
 
             // Create rank with default values
             val rank = rankManager.createRank(name, "&7", 0)
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.create.success", "rank" to rank.name))
+            val successMessage = radium.yamlFactory.getMessage("rank.create.success") ?: "&aCreated rank '{rank}' successfully!"
+            actor.sendMessage(TabListManager.safeParseColoredText(successMessage.replace("{rank}", rank.name)))
         } catch (e: Exception) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
-                "operation" to "create rank",
-                "message" to e.message.toString()
+            val failMessage = radium.yamlFactory.getMessage("general.failed_operation") ?: "&cFailed to {operation}: {message}"
+            actor.sendMessage(TabListManager.safeParseColoredText(
+                failMessage.replace("{operation}", "create rank").replace("{message}", e.message.toString())
             ))
         }
     }
@@ -72,20 +90,23 @@ class Rank(private val radium: Radium) {
     ) {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.delete.usage"))
+                val usageMessage = radium.yamlFactory.getMessage("rank.delete.usage") ?: "&cUsage: /rank delete <name>"
+                actor.sendMessage(TabListManager.safeParseColoredText(usageMessage))
                 return
             }
 
             val success = rankManager.deleteRank(name)
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.delete.success", "rank" to name))
+                val successMessage = radium.yamlFactory.getMessage("rank.delete.success") ?: "&aDeleted rank '{rank}' successfully!"
+                actor.sendMessage(TabListManager.safeParseColoredText(successMessage.replace("{rank}", name)))
             } else {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.delete.not_found", "rank" to name))
+                val notFoundMessage = radium.yamlFactory.getMessage("rank.delete.not_found") ?: "&cRank '{rank}' not found!"
+                actor.sendMessage(TabListManager.safeParseColoredText(notFoundMessage.replace("{rank}", name)))
             }
         } catch (e: Exception) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
-                "operation" to "delete rank",
-                "message" to e.message.toString()
+            val failMessage = radium.yamlFactory.getMessage("general.failed_operation") ?: "&cFailed to {operation}: {message}"
+            actor.sendMessage(TabListManager.safeParseColoredText(
+                failMessage.replace("{operation}", "delete rank").replace("{message}", e.message.toString())
             ))
         }
     }
@@ -123,75 +144,109 @@ class Rank(private val radium: Radium) {
         }
     }
 
-    @Subcommand("setcolor")
-    @CommandPermission("radium.rank.setcolor")
-    suspend fun setColor(
+    @Subcommand("setsuffix")
+    @CommandPermission("radium.rank.setsuffix")
+    suspend fun setSuffix(
         actor: Player,
         @Optional @RankList name: String?,
-        @Optional @ColorList color: String?
+        @Optional suffix: String?
     ){
         try {
-            if (name.isNullOrEmpty() || color.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.usage"))
+            if (name.isNullOrEmpty() || suffix.isNullOrEmpty()) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setsuffix.usage"))
                 return
             }
 
-            // Validate color codes
-            val validColors = setOf("&0", "&1", "&2", "&3", "&4", "&5", "&6", "&7", "&8", "&9", 
-                                   "&a", "&b", "&c", "&d", "&e", "&f", 
-                                   "black", "dark_blue", "dark_green", "dark_aqua", "dark_red", 
-                                   "dark_purple", "gold", "gray", "dark_gray", "blue", 
-                                   "green", "aqua", "red", "light_purple", "yellow", "white")
-            
-            val normalizedColor = if (color.startsWith("&")) color else "&$color"
-            val colorName = color.lowercase()
-            
-            if (!validColors.contains(normalizedColor) && !validColors.contains(colorName)) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.invalid_color", 
-                    "color" to color))
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.valid_colors"))
-                return
-            }
-
-            // Convert named colors to color codes
-            val finalColor = when (colorName) {
-                "black" -> "&0"
-                "dark_blue" -> "&1"
-                "dark_green" -> "&2"
-                "dark_aqua" -> "&3"
-                "dark_red" -> "&4"
-                "dark_purple" -> "&5"
-                "gold" -> "&6"
-                "gray" -> "&7"
-                "dark_gray" -> "&8"
-                "blue" -> "&9"
-                "green" -> "&a"
-                "aqua" -> "&b"
-                "red" -> "&c"
-                "light_purple" -> "&d"
-                "yellow" -> "&e"
-                "white" -> "&f"
-                else -> normalizedColor
-            }
-
-            val success = rankManager.setRankColor(name, finalColor)
+            val success = rankManager.setRankSuffix(name, suffix)
 
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setsuffix.success",
                     "rank" to name,
-                    "color" to finalColor
+                    "suffix" to suffix
                 ))
                 
                 // Update tab lists for all players with this rank
                 GlobalScope.launch {
-                    radium.networkVanishManager.refreshAllTabLists()
+                    radium.tabListManager.updateAllPlayersTabList()
                 }
             } else {
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
             }
         } catch (e: Exception) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
-                "operation" to "set color",
+                "operation" to "set suffix",
+                "message" to e.message.toString()
+            ))
+        }
+    }
+
+    @Subcommand("settabprefix")
+    @CommandPermission("radium.rank.settabprefix")
+    suspend fun setTabPrefix(
+        actor: Player,
+        @Optional @RankList name: String?,
+        @Optional tabPrefix: String?
+    ){
+        try {
+            if (name.isNullOrEmpty() || tabPrefix.isNullOrEmpty()) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabprefix.usage"))
+                return
+            }
+
+            val success = rankManager.setRankTabPrefix(name, tabPrefix)
+
+            if (success) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabprefix.success",
+                    "rank" to name,
+                    "prefix" to tabPrefix
+                ))
+                
+                // Update tab lists for all players with this rank
+                GlobalScope.launch {
+                    radium.tabListManager.updateAllPlayersTabList()
+                }
+            } else {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
+            }
+        } catch (e: Exception) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "set tab prefix",
+                "message" to e.message.toString()
+            ))
+        }
+    }
+
+    @Subcommand("settabsuffix")
+    @CommandPermission("radium.rank.settabsuffix")
+    suspend fun setTabSuffix(
+        actor: Player,
+        @Optional @RankList name: String?,
+        @Optional tabSuffix: String?
+    ){
+        try {
+            if (name.isNullOrEmpty() || tabSuffix.isNullOrEmpty()) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabsuffix.usage"))
+                return
+            }
+
+            val success = rankManager.setRankTabSuffix(name, tabSuffix)
+
+            if (success) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabsuffix.success",
+                    "rank" to name,
+                    "suffix" to tabSuffix
+                ))
+                
+                // Update tab lists for all players with this rank
+                GlobalScope.launch {
+                    radium.tabListManager.updateAllPlayersTabList()
+                }
+            } else {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
+            }
+        } catch (e: Exception) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "set tab suffix",
                 "message" to e.message.toString()
             ))
         }
@@ -379,16 +434,30 @@ class Rank(private val radium: Radium) {
                     permissionMap[perm] = null // null means it's from own rank
                 }
 
-                // Add inherited permissions with source
-                directInherits.forEach { inheritedRankName ->
-                    val inheritedRank = rankManager.getRank(inheritedRankName)
-                    if (inheritedRank != null) {
-                        inheritedRank.permissions.forEach { perm ->
-                            if (!permissionMap.containsKey(perm)) {
-                                permissionMap[perm] = inheritedRankName
-                            }
+                // Add inherited permissions with proper source tracking
+                // We need to trace through the inheritance hierarchy to find the actual source of each permission
+                suspend fun addPermissionsFromRank(rankName: String, visited: MutableSet<String> = mutableSetOf()) {
+                    if (rankName in visited) return // Prevent infinite loops
+                    visited.add(rankName)
+                    
+                    val inheritedRank = rankManager.getRank(rankName) ?: return
+                    
+                    // Add permissions from this inherited rank
+                    inheritedRank.permissions.forEach { perm ->
+                        if (!permissionMap.containsKey(perm)) {
+                            permissionMap[perm] = rankName
                         }
                     }
+                    
+                    // Recursively add permissions from ranks this rank inherits
+                    inheritedRank.inherits.forEach { nestedInheritedRankName ->
+                        addPermissionsFromRank(nestedInheritedRankName, visited)
+                    }
+                }
+
+                // Add permissions from all inherited ranks
+                directInherits.forEach { inheritedRankName ->
+                    addPermissionsFromRank(inheritedRankName)
                 }
 
                 // Build the component for display
@@ -402,8 +471,6 @@ class Rank(private val radium: Radium) {
                     .append(radium.yamlFactory.getMessageComponent("rank.info.tabprefix", "tabprefix" to (rank.tabPrefix ?: "Uses regular prefix")))
                     .appendNewline()
                     .append(radium.yamlFactory.getMessageComponent("rank.info.tabsuffix", "tabsuffix" to (rank.tabSuffix ?: "None")))
-                    .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("rank.info.color", "color" to rank.color))
                     .appendNewline()
                     .append(radium.yamlFactory.getMessageComponent("rank.info.weight", "weight" to rank.weight.toString()))
                     .appendNewline()
@@ -474,118 +541,6 @@ class Rank(private val radium: Radium) {
         } catch (e: Exception) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
                 "operation" to "list ranks",
-                "message" to e.message.toString()
-            ))
-        }
-    }
-
-    @Subcommand("settabprefix")
-    @CommandPermission("radium.rank.settabprefix")
-    suspend fun setTabPrefix(
-        actor: Player,
-        @Optional @RankList name: String?,
-        @Optional prefix: String?
-    ){
-        try {
-            if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabprefix.usage"))
-                return
-            }
-
-            val success = rankManager.updateRank(name) { rank ->
-                rank.copy(tabPrefix = prefix)
-            }
-
-            if (success) {
-                val displayPrefix = prefix ?: "null (will use regular prefix)"
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabprefix.success",
-                    "rank" to name,
-                    "prefix" to displayPrefix
-                ))
-                
-                // Update tab lists for all players with this rank
-                GlobalScope.launch {
-                    radium.networkVanishManager.refreshAllTabLists()
-                }
-            } else {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
-            }
-        } catch (e: Exception) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
-                "operation" to "set tab prefix",
-                "message" to e.message.toString()
-            ))
-        }
-    }
-
-    @Subcommand("settabsuffix")
-    @CommandPermission("radium.rank.settabsuffix")
-    suspend fun setTabSuffix(
-        actor: Player,
-        @Optional @RankList name: String?,
-        @Optional suffix: String?
-    ){
-        try {
-            if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabsuffix.usage"))
-                return
-            }
-
-            val success = rankManager.updateRank(name) { rank ->
-                rank.copy(tabSuffix = suffix)
-            }
-
-            if (success) {
-                val displaySuffix = suffix ?: "null (no suffix)"
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabsuffix.success",
-                    "rank" to name,
-                    "suffix" to displaySuffix
-                ))
-                
-                // Update tab lists for all players with this rank
-                GlobalScope.launch {
-                    radium.networkVanishManager.refreshAllTabLists()
-                }
-            } else {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
-            }
-        } catch (e: Exception) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
-                "operation" to "set tab suffix",
-                "message" to e.message.toString()
-            ))
-        }
-    }
-
-    @Subcommand("setsuffix")
-    @CommandPermission("radium.rank.setsuffix")
-    suspend fun setSuffix(
-        actor: Player,
-        @Optional @RankList name: String?,
-        @Optional suffix: String?
-    ){
-        try {
-            if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setsuffix.usage"))
-                return
-            }
-
-            val success = rankManager.updateRank(name) { rank ->
-                rank.copy(suffix = suffix)
-            }
-
-            if (success) {
-                val displaySuffix = suffix ?: "null (no suffix)"
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setsuffix.success",
-                    "rank" to name,
-                    "suffix" to displaySuffix
-                ))
-            } else {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
-            }
-        } catch (e: Exception) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
-                "operation" to "set suffix",
                 "message" to e.message.toString()
             ))
         }

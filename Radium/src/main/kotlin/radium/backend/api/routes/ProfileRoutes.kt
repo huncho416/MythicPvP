@@ -18,13 +18,37 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
                 ErrorResponse("Missing player parameter")
             )
 
-            val player = server.getPlayer(playerName).orElse(null)
-            if (player == null) {
-                call.respond(HttpStatusCode.NotFound, ErrorResponse("Player not found"))
-                return@get
+            // First try to find online player
+            val onlinePlayer = server.getPlayer(playerName).orElse(null)
+            
+            val profile: radium.backend.player.Profile?
+            val playerUuid: java.util.UUID
+            val actualUsername: String
+            
+            if (onlinePlayer != null) {
+                // Player is online - get from connection handler
+                profile = plugin.connectionHandler.getPlayerProfile(onlinePlayer.uniqueId)
+                playerUuid = onlinePlayer.uniqueId
+                actualUsername = onlinePlayer.username
+            } else {
+                // Player is offline - search database by username
+                try {
+                    val foundProfile = plugin.connectionHandler.findPlayerProfileByUsername(playerName)
+                    if (foundProfile != null) {
+                        profile = foundProfile
+                        playerUuid = foundProfile.uuid
+                        actualUsername = foundProfile.username
+                    } else {
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse("Player profile not found"))
+                        return@get
+                    }
+                } catch (e: Exception) {
+                    logger.warn("Error searching for offline player $playerName: ${e.message}")
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Player not found"))
+                    return@get
+                }
             }
 
-            val profile = plugin.connectionHandler.getPlayerProfile(player.uniqueId)
             if (profile == null) {
                 call.respond(HttpStatusCode.NotFound, ErrorResponse("Profile not found"))
                 return@get
@@ -42,13 +66,13 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
             } else null
 
             val response = ProfileResponse(
-                username = player.username,
-                uuid = player.uniqueId.toString(),
+                username = actualUsername,
+                uuid = playerUuid.toString(),
                 rank = rankResponse,
                 permissions = highestRank?.permissions?.toList() ?: emptyList(),
                 prefix = highestRank?.prefix,
                 color = highestRank?.color,
-                isVanished = plugin.staffManager.isVanished(player),
+                isVanished = onlinePlayer?.let { plugin.staffManager.isVanished(it) } ?: false,
                 lastSeen = profile.lastSeen?.toEpochMilli()
             )
 

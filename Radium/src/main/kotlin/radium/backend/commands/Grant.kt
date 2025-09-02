@@ -32,7 +32,7 @@ class Grant(private val radium: Radium) {
         @Optional durationReason: String?
     ) {
         if (target.isNullOrEmpty() || rank.isNullOrEmpty()) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.grant.usage"))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.grant.usage.main"))
             return
         }
 

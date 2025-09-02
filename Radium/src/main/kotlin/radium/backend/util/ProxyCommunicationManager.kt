@@ -162,7 +162,7 @@ class ProxyCommunicationManager(
                     val highestRank = profile.getHighestRank(plugin.rankManager)
                     if (highestRank != null) {
                         // Debug logging to check for encoding issues
-                        plugin.logger.debug("Sending rank data for $playerName: rank=${highestRank.name}, prefix='${highestRank.prefix}', color='${highestRank.color}'")
+
                         
                         // Ensure safe transmission of color codes through Redis
                         // Convert & codes to a safe format that won't cause encoding issues

@@ -109,7 +109,6 @@ class JoinItemMonitor(private val plugin: LobbyPlugin) {
         
         // Refresh items if needed
         if (needsRefresh) {
-            plugin.logger.debug("[JoinItemMonitor] Restoring join items for player: ${player.username}")
             JoinItemsUtil.giveJoinItems(player, plugin)
         }
     }

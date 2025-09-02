@@ -84,8 +84,7 @@ class WarnCommand(private val plugin: LobbyPlugin) : Command("warn") {
                     staffId = player.uuid.toString(),
                     duration = null, // Warnings can be permanent or have duration
                     silent = false,
-                    clearInventory = false,
-                    priority = PunishmentRequest.Priority.NORMAL
+                    clearInventory = false
                 )
                 
                 val result = plugin.radiumPunishmentAPI.issuePunishment(request)

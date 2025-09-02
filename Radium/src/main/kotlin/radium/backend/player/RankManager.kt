@@ -6,14 +6,16 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
+import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bson.Document
 import radium.backend.util.MongoStream
 import radium.backend.util.LettuceCache
+import radium.backend.Radium
 import java.util.concurrent.ConcurrentHashMap
 
-class RankManager(private val mongoStream: MongoStream, private val lettuceCache: LettuceCache) {
+class RankManager(private val mongoStream: MongoStream, private val lettuceCache: LettuceCache, private var radium: Radium? = null) {
 
     // In-memory cache of ranks, keyed by rank name
     private val cachedRanks = ConcurrentHashMap<String, Rank>()
@@ -32,8 +34,15 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
 
     private val RANKS_COLLECTION = "ranks"
     private val DEFAULT_RANK_NAME = "Default"
-    private val DEFAULT_RANK_PREFIX = "&7"
+    private val DEFAULT_RANK_PREFIX = ""
     private val DEFAULT_RANK_WEIGHT = 0
+
+    /**
+     * Sets the radium instance (used for tab list updates)
+     */
+    fun setRadiumInstance(radium: Radium) {
+        this.radium = radium
+    }
 
     /**
      * Initializes the RankManager by loading all ranks from MongoDB
@@ -72,6 +81,12 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
 
             // Load all ranks from MongoDB
         val ranks = loadRanksFromMongo()
+        
+        // Clean any corrupted color codes in existing ranks
+        if (ranks.isNotEmpty()) {
+            // TODO: Fix cleanCorruptedRanks function compilation issues
+            // cleanCorruptedRanks()
+        }
 
         // If no ranks exist, create default ranks
         if (ranks.isEmpty()) {
@@ -79,17 +94,15 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
 
             // Create the default ranks with verbose logging
             try {
-                val defaultRank = createRank(DEFAULT_RANK_NAME, DEFAULT_RANK_PREFIX, DEFAULT_RANK_WEIGHT)
+                val defaultRank = createRank(DEFAULT_RANK_NAME, DEFAULT_RANK_PREFIX, DEFAULT_RANK_WEIGHT, "&f")
                 mongoStream.logger.info(Component.text("Created default rank: ${defaultRank.name}", NamedTextColor.GREEN))
 
-                // Create additional ranks
-                val memberRank = createRank("Member", "&a[Member] ", 10)
-                mongoStream.logger.info(Component.text("Created member rank: ${memberRank.name}", NamedTextColor.GREEN))
-
                 val adminRank = createRank("Admin", "&c[Admin] ", 100)
+                setRankTabPrefix("Admin", "&cADMIN &f")
                 mongoStream.logger.info(Component.text("Created admin rank: ${adminRank.name}", NamedTextColor.GREEN))
 
                 val ownerRank = createRank("Owner", "&4[Owner] ", 1000)
+                setRankTabPrefix("Owner", "&4OWNER &f")
                 mongoStream.logger.info(Component.text("Created owner rank: ${ownerRank.name}", NamedTextColor.GREEN))
 
                 // Add permissions to owner rank
@@ -100,16 +113,11 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
                 addPermissionToRank("Admin", "*")
                 mongoStream.logger.info(Component.text("Added * permission to Admin rank", NamedTextColor.GREEN))
 
-                // Add permissions to member rank
-                addPermissionToRank("Member", "command.friend")
-                mongoStream.logger.info(Component.text("Added command.friend permission to Member rank", NamedTextColor.GREEN))
-
                 // Verify the ranks were saved by re-fetching them from MongoDB
                 val verifyDefault = getRank(DEFAULT_RANK_NAME)
-                val verifyMember = getRank("Member")
                 val verifyAdmin = getRank("Admin")
                 val verifyOwner = getRank("Owner")
-                if (verifyDefault != null && verifyMember != null && verifyAdmin != null && verifyOwner != null) {
+                if (verifyDefault != null && verifyAdmin != null && verifyOwner != null) {
                     mongoStream.logger.info(Component.text("Verified all default ranks were successfully saved to database", NamedTextColor.GREEN))
                 } else {
                     mongoStream.logger.error(Component.text("CRITICAL: Some default ranks were not saved properly!", NamedTextColor.RED))
@@ -124,7 +132,6 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
 
             // Check if we have all essential ranks and create missing ones
             val essentialRanks = mapOf(
-                "Member" to ("&a[Member] " to 10),
                 "Admin" to ("&c[Admin] " to 100)
             )
 
@@ -136,8 +143,6 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
                         createRank(rankName, prefix, weight)
                         if (rankName == "Admin") {
                             addPermissionToRank(rankName, "*")
-                        } else if (rankName == "Member") {
-                            addPermissionToRank(rankName, "command.friend")
                         }
                         mongoStream.logger.info(Component.text("Created missing essential rank: $rankName", NamedTextColor.GREEN))
                     } catch (e: Exception) {
@@ -466,6 +471,16 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
     }
 
     /**
+     * Gets a rank by name from the cache only (synchronous)
+     *
+     * @param name The name of the rank to retrieve
+     * @return The rank object from cache, or null if not found in cache
+     */
+    fun getCachedRank(name: String): Rank? {
+        return cachedRanks[name.lowercase()]
+    }
+
+    /**
      * Gets all ranks from the in-memory cache
      *
      * @return List of all cached ranks
@@ -577,14 +592,14 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
 
         return Rank(
             name = document.getString("_id"),
-            prefix = document.getString("prefix"),
+            prefix = TabListManager.cleanColorCodes(document.getString("prefix")),
             weight = document.getInteger("weight"),
-            color = document.getString("color") ?: "&f", // Default to white if color not found
+            color = TabListManager.cleanColorCodes(document.getString("color") ?: "&f"),
             permissions = permissions,
             inherits = inherits,
-            suffix = document.getString("suffix"),
-            tabPrefix = document.getString("tabPrefix"),
-            tabSuffix = document.getString("tabSuffix")
+            suffix = TabListManager.cleanColorCodes(document.getString("suffix")),
+            tabPrefix = TabListManager.cleanColorCodes(document.getString("tabPrefix")),
+            tabSuffix = TabListManager.cleanColorCodes(document.getString("tabSuffix"))
         )
     }
 
@@ -620,6 +635,28 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
         saveRank(updatedRank)
         // Update cache
         cachedRanks[name.lowercase()] = updatedRank
+        
+        // Update tab lists for all players with this rank
+        radium?.let { radiumInstance ->
+            radiumInstance.scope.launch {
+                // Find all online players with this rank and update their tab display
+                radiumInstance.server.allPlayers.forEach { player ->
+                    try {
+                        val profile = radiumInstance.connectionHandler.findPlayerProfile(player.uniqueId.toString())
+                        if (profile != null) {
+                            val playerRanks = profile.getRanksCached(radiumInstance.rankManager)
+                            if (playerRanks.any { it.name.equals(name, ignoreCase = true) }) {
+                                radiumInstance.tabListManager.handleRankChange(player)
+                                radiumInstance.logger.debug("Updated tab list for ${player.username} due to rank change")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        radiumInstance.logger.warn("Failed to update tab list for ${player.username} after rank change: ${e.message}")
+                    }
+                }
+            }
+        }
+        
         return true
     }
 
@@ -646,14 +683,36 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
     }
 
     /**
-     * Sets the color of a rank
+     * Sets the suffix for a rank
      *
      * @param name The name of the rank to update
-     * @param color The new color code for the rank (e.g., "&c", "&a", "&b")
+     * @param suffix The new suffix for the rank
      * @return True if the rank was updated, false if it didn't exist
      */
-    suspend fun setRankColor(name: String, color: String): Boolean {
-        return updateRank(name) { it.copy(color = color) }
+    suspend fun setRankSuffix(name: String, suffix: String): Boolean {
+        return updateRank(name) { it.copy(suffix = suffix) }
+    }
+
+    /**
+     * Sets the tab prefix for a rank
+     *
+     * @param name The name of the rank to update
+     * @param tabPrefix The new tab prefix for the rank
+     * @return True if the rank was updated, false if it didn't exist
+     */
+    suspend fun setRankTabPrefix(name: String, tabPrefix: String): Boolean {
+        return updateRank(name) { it.copy(tabPrefix = tabPrefix) }
+    }
+
+    /**
+     * Sets the tab suffix for a rank
+     *
+     * @param name The name of the rank to update
+     * @param tabSuffix The new tab suffix for the rank
+     * @return True if the rank was updated, false if it didn't exist
+     */
+    suspend fun setRankTabSuffix(name: String, tabSuffix: String): Boolean {
+        return updateRank(name) { it.copy(tabSuffix = tabSuffix) }
     }
 
     /**
@@ -710,5 +769,32 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
         cachedRanks[rankName.lowercase()] = updatedRank
 
         return true
+    }
+
+    /**
+     * Update a rank in the database
+     */
+    private suspend fun updateRankInDatabase(rank: Rank) {
+        try {
+            val document = Document()
+                .append("_id", rank.name)
+                .append("prefix", rank.prefix)
+                .append("weight", rank.weight)
+                .append("color", rank.color)
+                .append("permissions", rank.permissions.toList())
+                .append("inherits", rank.inherits)
+                .append("suffix", rank.suffix)
+                .append("tabPrefix", rank.tabPrefix)
+                .append("tabSuffix", rank.tabSuffix)
+            
+            mongoStream.getDatabase()
+                .getCollection("ranks")
+                .replaceOne(Filters.eq("_id", rank.name), document, ReplaceOptions().upsert(true))
+                .awaitFirst()
+                
+            radium?.logger?.debug("Updated rank ${rank.name} in database")
+        } catch (e: Exception) {
+            radium?.logger?.error("Failed to update rank ${rank.name} in database: ${e.message}")
+        }
     }
 }

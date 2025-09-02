@@ -19,8 +19,8 @@ class LastSeen(private val radium: Radium) {
     @Command("lastseen")
     fun lastSeenUsage(actor: Player) {
         // Show usage information for the lastseen command
-        actor.sendMessage(yamlFactory.getMessageComponent("commands.lastseen.header"))
-        actor.sendMessage(yamlFactory.getMessageComponent("commands.lastseen.usage.main"))
+        actor.sendMessage(yamlFactory.getMessageComponent("lastseen.header"))
+        actor.sendMessage(yamlFactory.getMessageComponent("lastseen.usage.main"))
     }
 
     @Command("lastseen <target>")
@@ -34,7 +34,7 @@ class LastSeen(private val radium: Radium) {
         }
 
         if (profile == null) {
-            actor.sendMessage(yamlFactory.getMessageComponent("commands.lastseen.profile_not_found", "target" to target))
+            actor.sendMessage(yamlFactory.getMessageComponent("lastseen.profile_not_found", "target" to target))
             return
         }
 
@@ -44,7 +44,7 @@ class LastSeen(private val radium: Radium) {
         }
         
         if (targetPlayer != null && targetPlayer.isActive) {
-            actor.sendMessage(yamlFactory.getMessageComponent("commands.lastseen.online", "target" to profile.username))
+            actor.sendMessage(yamlFactory.getMessageComponent("lastseen.online", "target" to profile.username))
             return
         }
 
@@ -53,7 +53,7 @@ class LastSeen(private val radium: Radium) {
         val lastSeen = profile.lastSeen
         
         if (lastSeen == Instant.EPOCH) {
-            actor.sendMessage(yamlFactory.getMessageComponent("commands.lastseen.never_joined", "target" to profile.username))
+            actor.sendMessage(yamlFactory.getMessageComponent("lastseen.never_joined", "target" to profile.username))
             return
         }
         
@@ -63,7 +63,7 @@ class LastSeen(private val radium: Radium) {
         val timeAgo = formatTimeSince(lastSeen)
 
         // Send the message
-        actor.sendMessage(yamlFactory.getMessageComponent("commands.lastseen.offline", 
+        actor.sendMessage(yamlFactory.getMessageComponent("lastseen.offline", 
             "target" to profile.username,
             "time" to timeAgo
         ))

@@ -13,6 +13,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import radium.backend.Radium
+import radium.backend.player.TabListManager
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -53,16 +54,31 @@ class NetworkVanishManager(private val radium: Radium) {
                 reason = reason
             )
             vanishedPlayers[player.uniqueId] = vanishData
-            hideFromTabList(player, vanishData)
+            
+            // Hide player from other players
+            hidePlayerFromOthers(player, vanishData)
+
+            
+            // Send staff notification
+            sendStaffVanishNotification(player, true)
         } else {
             vanishedPlayers.remove(player.uniqueId)
-            showInTabList(player)
+            
+            // Show player to all other players
+            showPlayerToOthers(player)
+
+            
+            // Send staff notification
+            sendStaffVanishNotification(player, false)
         }
         
-        // Schedule batch update
+        // Update tab lists through TabListManager
+        radium.tabListManager.handleVanishStateChange(player, vanished)
+        
+        // Schedule batch update for backend servers
         scheduleVanishUpdate(player.uniqueId, vanished)
         
-        radium.logger.info("Player ${player.username} vanish state changed to: $vanished")
+
         return true
     }
     
@@ -124,16 +140,16 @@ class NetworkVanishManager(private val radium: Radium) {
             if (VanishLevel.canSeeVanished(viewer, vanishData.level, radium)) {
                 // Keep the player in the tab list for staff who can see them
                 // The TabListManager will handle adding the vanish indicator
-                radium.logger.debug("Keeping vanished ${vanishedPlayer.username} visible in ${viewer.username}'s tab (staff)")
+
             } else {
                 // Remove from tab list for players who cannot see them
                 tabList.removeEntry(vanishedPlayer.uniqueId)
-                radium.logger.debug("Removed vanished ${vanishedPlayer.username} from ${viewer.username}'s tab")
+
             }
         }
         
-        // Now update all display names via TabListManager to add vanish indicators
-        radium.tabListManager.updatePlayerTabList(vanishedPlayer)
+        // Now update all display names via TabListManager to handle vanish indicators
+        radium.tabListManager.handleVanishStateChange(vanishedPlayer, true)
     }
     
     /**
@@ -143,15 +159,14 @@ class NetworkVanishManager(private val radium: Radium) {
         // Wait for rank data to be available
         kotlinx.coroutines.delay(100)
         
-        radium.logger.debug("Showing unvanished player ${player.username} in all tab lists")
+
         
         // Use TabListManager to properly format the display name without vanish indicator
-        radium.tabListManager.updatePlayerTabList(player)
+        radium.tabListManager.handleVanishStateChange(player, false)
         
-        radium.logger.debug("Updated tab display for unvanished player ${player.username}")
+
     }
-    
-    /**
+      /**
      * Update tab list visibility for all players when a new player joins
      */
     suspend fun updateTabListForNewPlayer(newPlayer: Player) {
@@ -161,38 +176,21 @@ class NetworkVanishManager(private val radium: Radium) {
             
             radium.logger.debug("Updating tab list visibility for new player ${newPlayer.username}")
             
-            // Remove vanished players that the new player shouldn't see
-            radium.server.allPlayers.forEach { existingPlayer ->
-                if (existingPlayer.uniqueId == newPlayer.uniqueId) return@forEach
-                
-                val vanishData = getVanishData(existingPlayer.uniqueId)
-                if (vanishData != null && !VanishLevel.canSeeVanished(newPlayer, vanishData.level, radium)) {
-                    // Remove vanished player from new player's tab list
-                    newPlayer.tabList.removeEntry(existingPlayer.uniqueId)
-                    radium.logger.debug("Removed vanished ${existingPlayer.username} from new player ${newPlayer.username}'s tab")
-                }
-            }
-            
-            // Update other players' tab lists if new player is vanished
-            val newPlayerVanishData = getVanishData(newPlayer.uniqueId)
-            if (newPlayerVanishData != null) {
-                hideFromTabList(newPlayer, newPlayerVanishData)
-            }
+            // Let TabListManager handle all the tab list logic
+            radium.tabListManager.rebuildPlayerTabList(newPlayer)
             
             radium.logger.debug("Completed tab list visibility update for ${newPlayer.username}")
         } catch (e: Exception) {
             radium.logger.warn("Failed to update tab list for new player ${newPlayer.username}: ${e.message}")
         }
     }
-    
+
     /**
      * Refresh tab list for all players (useful for manual refresh)
      */
     suspend fun refreshAllTabLists() {
         try {
-            radium.server.allPlayers.forEach { player ->
-                updateTabListForNewPlayer(player)
-            }
+            radium.tabListManager.rebuildAllTabLists()
             radium.logger.info("Refreshed tab lists for all players")
         } catch (e: Exception) {
             radium.logger.warn("Failed to refresh all tab lists: ${e.message}")
@@ -241,11 +239,18 @@ class NetworkVanishManager(private val radium: Radium) {
      */
     private fun sendBatchVanishUpdate(updates: Map<UUID, Boolean>) {
         val batchUpdates = updates.map { (playerId, vanished) ->
+            val vanishData = getVanishData(playerId)
+            val vanishLevelValue = vanishData?.level?.minWeight ?: VanishLevel.HELPER.minWeight
+            
+            // Try to get player name from connected players
+            val playerName = radium.server.allPlayers.find { it.uniqueId == playerId }?.username ?: "Unknown"
+            
             mapOf(
                 "action" to "set_vanish",
                 "player" to playerId.toString(),
+                "playerName" to playerName,
                 "vanished" to vanished,
-                "level" to "HELPER" // Default level for batch updates
+                "level" to vanishLevelValue // Send as integer, not string
             )
         }
         
@@ -280,9 +285,9 @@ class NetworkVanishManager(private val radium: Radium) {
         if (vanishData != null) {
             // Create JSON message for consistency with batch updates
             val jsonMessage = mapOf(
-                "type" to "VANISH_STATE",
-                "player_id" to playerId.toString(),
-                "player_name" to player.username,
+                "action" to "set_vanish",
+                "player" to playerId.toString(),
+                "playerName" to player.username,
                 "vanished" to true,
                 "level" to vanishData.level.minWeight
             )
@@ -292,7 +297,7 @@ class NetworkVanishManager(private val radium: Radium) {
             
             try {
                 event.server.sendPluginMessage(VANISH_CHANNEL, messageBytes)
-                radium.logger.debug("Notified server ${event.server.serverInfo.name} about vanished player ${player.username}")
+
             } catch (e: Exception) {
                 radium.logger.warn("Failed to notify server about vanish state: ${e.message}")
             }
@@ -329,7 +334,7 @@ class NetworkVanishManager(private val radium: Radium) {
      */
     fun initialize() {
         startUpdateBatcher()
-        radium.logger.info("NetworkVanishManager initialized successfully")
+
     }
     
     /**
@@ -342,6 +347,184 @@ class NetworkVanishManager(private val radium: Radium) {
             // Convert & codes to § codes, then parse with LegacyComponentSerializer
             val legacyText = text.replace('&', '§')
             LegacyComponentSerializer.legacySection().deserialize(legacyText)
+        }
+    }
+    /**
+     * Hide player from other players in the game world
+     */
+    private suspend fun hidePlayerFromOthers(vanishedPlayer: Player, vanishData: VanishData) {
+
+        
+        // Send comprehensive vanish update to ALL servers
+        sendVanishUpdateToAllServers(vanishedPlayer, true, vanishData.level)
+        
+        radium.server.allPlayers.forEach { viewer ->
+            if (viewer.uniqueId == vanishedPlayer.uniqueId) return@forEach
+            
+            try {
+                val canSee = radium.staffManager.canSeeVanishedPlayerSync(viewer, vanishedPlayer)
+                if (!canSee) {
+
+                }
+            } catch (e: Exception) {
+                radium.logger.warn("Failed to process visibility for ${vanishedPlayer.username} and ${viewer.username}: ${e.message}")
+            }
+        }
+        
+
+    }
+
+    /**
+     * Show player to all other players in the game world
+     */
+    private suspend fun showPlayerToOthers(player: Player) {
+        radium.logger.info("Showing ${player.username} to all other players in the game world")
+        
+        // Send comprehensive unvanish update to ALL servers
+        sendVanishUpdateToAllServers(player, false, VanishLevel.HELPER)
+        
+        radium.server.allPlayers.forEach { viewer ->
+            if (viewer.uniqueId == player.uniqueId) return@forEach
+            
+            try {
+                radium.logger.debug("Showing ${player.username} to ${viewer.username}")
+            } catch (e: Exception) {
+                radium.logger.warn("Failed to show ${player.username} to ${viewer.username}: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Send vanish update to a specific server
+     */
+    private fun sendVanishUpdate(player: Player, vanished: Boolean, server: com.velocitypowered.api.proxy.server.RegisteredServer?) {
+        if (server == null) return
+        
+        val vanishData = getVanishData(player.uniqueId)
+        val vanishLevelValue = vanishData?.level?.minWeight ?: VanishLevel.HELPER.minWeight
+        
+        val message = mapOf(
+            "action" to "set_vanish",
+            "player" to player.uniqueId.toString(),
+            "playerName" to player.username,
+            "vanished" to vanished,
+            "level" to vanishLevelValue  // Send as integer, not string
+        )
+        
+        val jsonString = com.google.gson.Gson().toJson(message)
+        val messageBytes = jsonString.toByteArray(Charsets.UTF_8)
+        
+        try {
+            server.sendPluginMessage(VANISH_CHANNEL, messageBytes)
+
+        } catch (e: Exception) {
+            radium.logger.warn("Failed to send vanish update to server ${server.serverInfo.name}: ${e.message}")
+        }
+    }
+    
+    /**
+     * Send vanish update to ALL servers to ensure comprehensive entity visibility updates
+     */
+    private fun sendVanishUpdateToAllServers(player: Player, vanished: Boolean, level: VanishLevel) {
+        val message = mapOf(
+            "action" to "set_vanish",
+            "player" to player.uniqueId.toString(),
+            "playerName" to player.username,
+            "vanished" to vanished,
+            "level" to level.minWeight
+        )
+        
+        val jsonString = com.google.gson.Gson().toJson(message)
+        val messageBytes = jsonString.toByteArray(Charsets.UTF_8)
+        
+
+        
+        // Send to ALL servers
+        radium.server.allServers.forEach { server ->
+            try {
+                server.sendPluginMessage(VANISH_CHANNEL, messageBytes)
+
+            } catch (e: Exception) {
+                radium.logger.warn("Failed to send comprehensive vanish update to server ${server.serverInfo.name}: ${e.message}")
+            }
+        }
+        
+
+    }
+
+    /**
+     * Send vanish notification to all staff members
+     */
+    private suspend fun sendStaffVanishNotification(player: Player, isVanishing: Boolean) {
+        try {
+            // Get player's profile and rank information
+            val profile = radium.connectionHandler.findPlayerProfile(player.uniqueId.toString())
+            val server = player.currentServer.orElse(null)?.server?.serverInfo?.name ?: "Unknown"
+            
+            // Get the vanishing player's rank weight to determine who can see the notification
+            val vanishingPlayerWeight = if (profile != null) {
+                val highestRank = profile.getHighestRank(radium.rankManager)
+                highestRank?.weight ?: 0
+            } else {
+                0
+            }
+            
+            // Build the rank prefix with proper formatting
+            val rankPrefix = if (profile != null) {
+                val highestRank = profile.getHighestRank(radium.rankManager)
+                if (highestRank != null) {
+                    val cleanPrefix = TabListManager.cleanColorCodes(highestRank.prefix?.trim() ?: "")
+                    val cleanColor = TabListManager.cleanColorCodes(highestRank.color?.trim() ?: "&f")
+                    "$cleanPrefix$cleanColor"
+                } else {
+                    "&f"
+                }
+            } else {
+                "&f"
+            }
+            
+            val action = if (isVanishing) "vanished" else "unvanished"
+            
+            // Get the staff notification message from lang.yml
+            val messageTemplate = radium.yamlFactory.getMessage("vanish.staff_notification")
+            val finalTemplate = if (messageTemplate == "vanish.staff_notification" || messageTemplate.isBlank()) {
+                "&8[STAFF] {prefix}{player}&8 has &7{action} &8on &e{server}"
+            } else {
+                messageTemplate
+            }
+            
+            val message = finalTemplate
+                .replace("{prefix}", rankPrefix)
+                .replace("{player}", player.username)
+                .replace("{action}", action)
+                .replace("{server}", server)
+            
+            // Parse the message with color codes
+            val component = TabListManager.safeParseColoredText(message)
+            
+            // Send to staff members who have equal or higher rank weight than the vanishing player
+            radium.server.allPlayers.forEach { staffPlayer ->
+                if (staffPlayer.uniqueId != player.uniqueId && radium.staffManager.isStaff(staffPlayer)) {
+                    // Check if this staff member should see the notification based on rank weight
+                    val staffProfile = radium.connectionHandler.findPlayerProfile(staffPlayer.uniqueId.toString())
+                    val staffWeight = if (staffProfile != null) {
+                        val staffHighestRank = staffProfile.getHighestRank(radium.rankManager)
+                        staffHighestRank?.weight ?: 0
+                    } else {
+                        0
+                    }
+                    
+                    // Only send notification if staff has equal or higher rank weight
+                    if (staffWeight >= vanishingPlayerWeight) {
+                        staffPlayer.sendMessage(component)
+
+                    }
+                }
+            }
+            
+
+        } catch (e: Exception) {
+            radium.logger.warn("Failed to send staff vanish notification for ${player.username}: ${e.message}")
         }
     }
 }

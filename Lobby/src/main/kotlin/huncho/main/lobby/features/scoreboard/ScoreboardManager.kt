@@ -6,12 +6,15 @@ import net.minestom.server.entity.Player
 import net.minestom.server.scoreboard.Sidebar
 import net.minestom.server.timer.TaskSchedule
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 
 class ScoreboardManager(private val plugin: LobbyPlugin) {
     
     private val playerScoreboards = ConcurrentHashMap<String, Sidebar>()
     private val enabledPlayers = ConcurrentHashMap<String, Boolean>()
+    private val updateMutexes = ConcurrentHashMap<String, Mutex>()
     private val updateJob = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
     init {
@@ -129,31 +132,40 @@ class ScoreboardManager(private val plugin: LobbyPlugin) {
         val uuid = player.uuid.toString()
         val existing = playerScoreboards.remove(uuid)
         existing?.viewers?.clear()
+        updateMutexes.remove(uuid) // Clean up the mutex as well
     }
     
     /**
      * Update scoreboard content for a player
      */
     private suspend fun updateScoreboardContent(player: Player, sidebar: Sidebar) {
-        val lines = plugin.configManager.getList(plugin.configManager.mainConfig, "scoreboard.lines")
+        val uuid = player.uuid.toString()
+        val mutex = updateMutexes.computeIfAbsent(uuid) { Mutex() }
         
-        // Remove existing lines first
-        val existingLines = sidebar.lines.toList() // Create a copy to avoid concurrent modification
-        existingLines.forEach { line ->
-            sidebar.removeLine(line.id)
-        }
-        
-        // Add new lines with placeholders replaced (MythicHub style - bottom to top)
-        lines.filterIsInstance<String>().forEachIndexed { index, lineStr ->
-            val processedLine = replacePlaceholders(player, lineStr)
-            
-            // Lines are displayed bottom to top, so reverse the score
-            val scoreboardLine = Sidebar.ScoreboardLine(
-                "line_$index",
-                MessageUtils.colorize(processedLine),
-                lines.size - index
-            )
-            sidebar.createLine(scoreboardLine)
+        mutex.withLock {
+            try {
+                val lines = plugin.configManager.getList(plugin.configManager.mainConfig, "scoreboard.lines")
+                
+                // Remove existing lines first
+                val existingLines = sidebar.lines.toList() // Create a copy to avoid concurrent modification
+                existingLines.forEach { line ->
+                    sidebar.removeLine(line.id)
+                }
+                
+                // Add new lines with placeholders replaced (MythicHub style - bottom to top)
+                lines.filterIsInstance<String>().forEachIndexed { index, lineStr ->
+                    val processedLine = replacePlaceholders(player, lineStr)
+                    
+                    // Lines are displayed bottom to top, so reverse the score
+                    val scoreboardLine = Sidebar.ScoreboardLine(
+                        "line_$index",
+                        MessageUtils.colorize(processedLine),
+                        lines.size - index
+                    )
+                    sidebar.createLine(scoreboardLine)
+                }                } catch (e: Exception) {
+                    LobbyPlugin.logger.error("Error updating scoreboard for ${player.username}: ${e.message}", e)
+                }
         }
     }
     

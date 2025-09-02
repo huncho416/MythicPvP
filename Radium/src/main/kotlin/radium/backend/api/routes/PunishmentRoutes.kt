@@ -21,7 +21,15 @@ fun Route.punishmentRoutes(plugin: Radium, server: ProxyServer, logger: Componen
             
             try {
                 // Find the staff player who is issuing the punishment
-                val staffPlayer = server.getPlayer(request.staffId).orElse(null)
+                val staffPlayer = try {
+                    // Try to parse staffId as UUID first
+                    val staffUuid = UUID.fromString(request.staffId)
+                    server.getPlayer(staffUuid).orElse(null)
+                } catch (e: IllegalArgumentException) {
+                    // If not a valid UUID, try as username
+                    server.getPlayer(request.staffId).orElse(null)
+                }
+                
                 if (staffPlayer == null) {
                     call.respond(HttpStatusCode.BadRequest, 
                         ErrorResponse("Staff player not found", "Staff player ${request.staffId} is not online"))
@@ -100,7 +108,15 @@ fun Route.punishmentRoutes(plugin: Radium, server: ProxyServer, logger: Componen
             
             try {
                 // Find the staff player who is revoking the punishment
-                val staffPlayer = server.getPlayer(request.staffId).orElse(null)
+                val staffPlayer = try {
+                    // Try to parse staffId as UUID first
+                    val staffUuid = UUID.fromString(request.staffId)
+                    server.getPlayer(staffUuid).orElse(null)
+                } catch (e: IllegalArgumentException) {
+                    // If not a valid UUID, try as username
+                    server.getPlayer(request.staffId).orElse(null)
+                }
+                
                 if (staffPlayer == null) {
                     call.respond(HttpStatusCode.BadRequest,
                         ErrorResponse("Staff player not found", "Staff player ${request.staffId} is not online"))

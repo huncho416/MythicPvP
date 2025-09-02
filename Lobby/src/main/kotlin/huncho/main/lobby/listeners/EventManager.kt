@@ -30,6 +30,8 @@ class EventManager(private val plugin: LobbyPlugin) {
         eventHandler.addListener(ItemProtectionListener(plugin, joinItemMonitor))
         eventHandler.addListener(InteractionProtectionListener(plugin))
         eventHandler.addListener(InventoryProtectionListener(plugin, joinItemMonitor))
+        eventHandler.addListener(NumberKeyProtectionListener(plugin, joinItemMonitor))
+        eventHandler.addListener(HotbarSwapProtectionListener(plugin, joinItemMonitor))
         eventHandler.addListener(PortalProtectionListener(plugin))
         
         // Item pickup protection

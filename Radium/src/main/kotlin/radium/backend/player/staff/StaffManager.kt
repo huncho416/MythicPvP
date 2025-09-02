@@ -9,6 +9,8 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import radium.backend.Radium
 import radium.backend.util.YamlFactory
 import java.util.UUID
@@ -28,13 +30,38 @@ class StaffManager(private val radium: Radium) {
 
     // Single map to manage staff channel status
     private val messageChannel: MutableMap<UUID, ChannelStatus> = mutableMapOf()
+    
+    // Track the last known server for each staff member
+    private val playerServers: MutableMap<UUID, String> = mutableMapOf()
 
     /**
      * Adds a player to the online staff map.
      */
     suspend fun addStaff(player: Player) {
-        // Use the configurable connection message from lang.yml
-        val connectionMessage = yamlFactory.getMessageComponent("staff.connected", "player" to player.username)
+        // Get player profile to access rank information for the connection message
+        val playerProfile = radium.connectionHandler.findPlayerProfile(player.uniqueId.toString())
+        val highestRank = playerProfile?.getHighestRank(radium.rankManager)
+        val prefix = highestRank?.prefix ?: ""
+        
+        // Extract color from prefix (e.g., "&4[Owner] &4" -> "&4")
+        val chatColor = if (prefix.isNotEmpty() && prefix.startsWith("&")) {
+            prefix.substring(0, 2) // Extract first color code like "&4"
+        } else {
+            "&f" // Default to white if no color found
+        }
+        
+        val serverName = player.currentServer.orElse(null)?.serverInfo?.name?.takeIf { it != "Unknown" } ?: "Lobby"
+        
+        // Store the server for later use in disconnect message
+        playerServers[player.uniqueId] = serverName
+        
+        // Use the configurable connection message from lang.yml with rank prefix, color, and server
+        val connectionMessage = yamlFactory.getMessageComponent("staff.connected", 
+            "player" to player.username,
+            "prefix" to prefix,
+            "chatColor" to chatColor,
+            "server" to serverName
+        )
         sendStaffMessage(connectionMessage)
 
         onlineStaff[player.uniqueId] = player
@@ -52,16 +79,56 @@ class StaffManager(private val radium: Radium) {
         if (autoVanishEnabled) {
             // Auto-vanish the staff member using async method
             radium.networkVanishManager.setVanishStateAsync(player, true)
-            radium.logger.debug("Auto-vanished ${player.username} on staff join")
+
         }
     }
 
     /**
-     * Removes a player from the online staff map.
+     * Removes a player from the online staff map and sends disconnect message.
      */
     fun removeStaff(player: Player) {
+        if (onlineStaff.containsKey(player.uniqueId)) {
+            // Send disconnect message with rank color asynchronously
+            GlobalScope.launch {
+                try {
+                    val playerProfile = radium.connectionHandler.findPlayerProfile(player.uniqueId.toString())
+                    val highestRank = playerProfile?.getHighestRank(radium.rankManager)
+                    val prefix = highestRank?.prefix ?: ""
+                    
+                    // Extract color from prefix (e.g., "&4[Owner] &4" -> "&4")
+                    val chatColor = if (prefix.isNotEmpty() && prefix.startsWith("&")) {
+                        prefix.substring(0, 2) // Extract first color code like "&4"
+                    } else {
+                        "&f" // Default to white if no color found
+                    }
+                    
+                    // Get the last known server for this player
+                    val serverName = playerServers[player.uniqueId] ?: "Lobby"
+                    
+                    val disconnectMessage = yamlFactory.getMessageComponent("staff.disconnected", 
+                        "player" to player.username,
+                        "prefix" to prefix,
+                        "chatColor" to chatColor,
+                        "server" to serverName
+                    )
+                    sendStaffMessage(disconnectMessage)
+                } catch (e: Exception) {
+                    // Fallback message if there's an error getting rank info
+                    val serverName = playerServers[player.uniqueId] ?: "Lobby"
+                    val disconnectMessage = yamlFactory.getMessageComponent("staff.disconnected", 
+                        "player" to player.username,
+                        "prefix" to "",
+                        "chatColor" to "&f",
+                        "server" to serverName
+                    )
+                    sendStaffMessage(disconnectMessage)
+                }
+            }
+        }
+        
         onlineStaff.remove(player.uniqueId)
         messageChannel.remove(player.uniqueId)
+        playerServers.remove(player.uniqueId) // Clean up server tracking
     }
 
     /**
@@ -210,7 +277,13 @@ class StaffManager(private val radium: Radium) {
                     // Get highest rank for prefix and name color
                     val highestRank = profile.getHighestRank(radium.rankManager)
                     val prefix = highestRank?.prefix ?: ""
-                    val chatColor = highestRank?.color ?: "&7"
+                    
+                    // Extract color from prefix (e.g., "&4[Owner] &4" -> "&4")
+                    val chatColor = if (prefix.isNotEmpty() && prefix.startsWith("&")) {
+                        prefix.substring(0, 2) // Extract first color code like "&4"
+                    } else {
+                        "&f" // Default to white if no color found
+                    }
                     
                     // Use the chat format from the lang.yml with proper formatting
                     val chatFormat = yamlFactory.getMessageComponent("staff.chat_format",
@@ -245,12 +318,44 @@ class StaffManager(private val radium: Radium) {
 
         // Only handle if the player is listening to staff messages and switched servers
         if (isListening(player) && from != null) {
-            val serverSwitchMessage = yamlFactory.getMessageComponent("staff.server_switch",
-                "player" to player.username,
-                "from" to from.name,
-                "to" to to.name
-            )
-            sendStaffMessage(serverSwitchMessage)
+            // Update the stored server for this player
+            val newServerName = to.name.takeIf { it != "Unknown" } ?: "Server"
+            playerServers[player.uniqueId] = newServerName
+            
+            // Get player rank information asynchronously for the server switch message
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val playerProfile = radium.connectionHandler.findPlayerProfile(player.uniqueId.toString())
+                    val highestRank = playerProfile?.getHighestRank(radium.rankManager)
+                    val prefix = highestRank?.prefix ?: ""
+                    
+                    // Extract color from prefix (e.g., "&4[Owner] &4" -> "&4")
+                    val chatColor = if (prefix.isNotEmpty() && prefix.startsWith("&")) {
+                        prefix.substring(0, 2) // Extract first color code like "&4"
+                    } else {
+                        "&f" // Default to white if no color found
+                    }
+                    
+                    val serverSwitchMessage = yamlFactory.getMessageComponent("staff.server_switch",
+                        "player" to player.username,
+                        "prefix" to prefix,
+                        "chatColor" to chatColor,
+                        "from" to (from.name.takeIf { it != "Unknown" } ?: "Lobby"),
+                        "to" to (to.name.takeIf { it != "Unknown" } ?: "Server")
+                    )
+                    sendStaffMessage(serverSwitchMessage)
+                } catch (e: Exception) {
+                    // Fallback message without prefix if there's an error
+                    val serverSwitchMessage = yamlFactory.getMessageComponent("staff.server_switch",
+                        "player" to player.username,
+                        "prefix" to "",
+                        "chatColor" to "&f",
+                        "from" to (from.name.takeIf { it != "Unknown" } ?: "Lobby"),
+                        "to" to (to.name.takeIf { it != "Unknown" } ?: "Server")
+                    )
+                    sendStaffMessage(serverSwitchMessage)
+                }
+            }
         }
     }
 
@@ -344,7 +449,9 @@ class StaffManager(private val radium: Radium) {
         val vanishedWeight = vanishedHighestRank?.weight ?: 0
         
         // Viewer can see vanished player if their rank weight is higher or equal
-        return viewerWeight >= vanishedWeight
+        val canSee = viewerWeight >= vanishedWeight
+        
+        return canSee
     }
     
     /**
@@ -375,7 +482,7 @@ class StaffManager(private val radium: Radium) {
             ).entries.joinToString(",") { "${it.key}=${it.value}" }
             
             radium.lettuceCache.sync().publish("radium:player:vanish", message)
-            radium.logger.debug("Published vanish event for ${player.username}: vanished=$isVanished")
+
             
         } catch (e: Exception) {
             radium.logger.error("Failed to publish vanish event for ${player.username}: ${e.message}")
@@ -384,8 +491,7 @@ class StaffManager(private val radium: Radium) {
 
     /**
      * Synchronous version of canSeeVanishedPlayer for tab list updates
-     * Uses a conservative approach since we can't access async rank data
-     * For proper rank-weight comparison, use canSeeVanishedPlayerEnhanced
+     * Uses cached profile data for rank-weight comparison when available
      */
     fun canSeeVanishedPlayerSync(viewer: Player, vanishedPlayer: Player): Boolean {
         // If the viewer has the special permission to see all vanished players
@@ -398,9 +504,32 @@ class StaffManager(private val radium: Radium) {
             return true
         }
         
-        // Conservative approach: Only staff can see vanished players
-        // For proper rank-weight comparison, the async methods should be used
-        return isStaffOnline(viewer)
+        try {
+            // Try to get cached profiles for rank-weight comparison
+            val viewerProfile = radium.connectionHandler.getPlayerProfile(viewer.uniqueId, viewer.username)
+            val vanishedProfile = radium.connectionHandler.getPlayerProfile(vanishedPlayer.uniqueId, vanishedPlayer.username)
+            
+            if (viewerProfile != null && vanishedProfile != null) {
+                // Use cached data for proper rank-weight comparison
+                val viewerHighestRank = viewerProfile.getHighestRankCached(radium.rankManager)
+                val vanishedHighestRank = vanishedProfile.getHighestRankCached(radium.rankManager)
+                
+                val viewerWeight = viewerHighestRank?.weight ?: 0
+                val vanishedWeight = vanishedHighestRank?.weight ?: 0
+                
+
+                
+                // Viewer can see vanished player if their rank weight is higher or equal
+                return viewerWeight >= vanishedWeight
+            }
+        } catch (e: Exception) {
+            radium.logger.warn("Failed to get cached profiles for vanish visibility check: ${e.message}")
+        }
+        
+        // Fallback: Only staff can see vanished players if no profile data available
+        val canSee = isStaffOnline(viewer)
+
+        return canSee
     }
 
     /**
@@ -436,7 +565,9 @@ class StaffManager(private val radium: Radium) {
             val vanishedWeight = vanishedHighestRank?.weight ?: 0
             
             // Viewer can see vanished player if their rank weight is higher or equal
-            return viewerWeight >= vanishedWeight
+            val canSee = viewerWeight >= vanishedWeight
+            
+            return canSee
         } catch (e: Exception) {
             radium.logger.warn("Failed to check enhanced vanish visibility for ${viewer.username} -> ${vanishedPlayer.username}: ${e.message}")
             // Fallback to simplified logic

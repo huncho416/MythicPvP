@@ -7,11 +7,11 @@ import revxrsal.commands.annotation.Command
 import revxrsal.commands.velocity.annotation.CommandPermission
 import radium.backend.Radium
 
-@Command("chatunmute")
+@Command("chatunmute", "chat unmute")
 @CommandPermission("radium.chat.mute")
 class ChatUnmute(private val radium: Radium) {
 
-    @Command("chatunmute")
+    @Command("chatunmute", "chat unmute")
     fun unmuteChat(actor: Player) {
         if (!radium.chatManager.isChatMuted()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.unmute.not_muted"))

@@ -1,14 +1,10 @@
-version: '3.8'
-
 services:
   radium-mongodb:
     image: mongo:7.0
     container_name: radium-mongodb
     restart: unless-stopped
     ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: radium
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
       - radium_mongodb_data:/data/db
     networks:
@@ -19,8 +15,8 @@ services:
     container_name: radium-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
-    command: redis-server --requirepass P3XWLBKRFpEROPqaLfq7JKyn --appendonly yes
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
     volumes:
       - radium_redis_data:/data
     networks:

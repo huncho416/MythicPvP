@@ -15,7 +15,9 @@ import huncho.main.lobby.features.world.WorldLightingManager
 import huncho.main.lobby.features.tablist.TabListManager
 import huncho.main.lobby.features.vanish.VanishStatusMonitor
 import huncho.main.lobby.features.vanish.VanishEventListener
+import huncho.main.lobby.features.vanish.PacketVanishManager
 import huncho.main.lobby.listeners.VanishPluginMessageListener
+import huncho.main.lobby.listeners.GamemodePluginMessageListener
 import huncho.main.lobby.managers.SchematicManager
 import huncho.main.lobby.integration.RadiumIntegration
 import huncho.main.lobby.redis.RedisManager
@@ -66,6 +68,8 @@ object LobbyPlugin {
     lateinit var vanishStatusMonitor: VanishStatusMonitor
     lateinit var vanishEventListener: VanishEventListener
     lateinit var vanishPluginMessageListener: VanishPluginMessageListener
+    lateinit var gamemodePluginMessageListener: GamemodePluginMessageListener
+    lateinit var packetVanishManager: PacketVanishManager
     lateinit var schematicManager: SchematicManager
     
     // Integration
@@ -207,6 +211,8 @@ object LobbyPlugin {
         vanishStatusMonitor = VanishStatusMonitor(this)
         vanishEventListener = VanishEventListener(this)
         vanishPluginMessageListener = VanishPluginMessageListener(this)
+        gamemodePluginMessageListener = GamemodePluginMessageListener(this)
+        packetVanishManager = PacketVanishManager(this)
         
         // Initialize the new managers
         worldLightingManager.initialize()
@@ -216,6 +222,11 @@ object LobbyPlugin {
         // Register plugin message listener for hybrid vanish system
         val eventHandler = MinecraftServer.getGlobalEventHandler()
         eventHandler.addListener(vanishPluginMessageListener)
+        eventHandler.addListener(gamemodePluginMessageListener)
+        eventHandler.addListener(packetVanishManager)
+        
+        // Start vanish enforcement task
+        vanishPluginMessageListener.startVanishEnforcementTask()
         
         // Register vanish event handlers in visibility manager
         visibilityManager.registerEvents(eventHandler)
@@ -356,5 +367,12 @@ object LobbyPlugin {
                 logger.error("Failed to initialize punishment service fallback", fallbackError)
             }
         }
+    }
+    
+    /**
+     * Get the vanish plugin message listener
+     */
+    fun getVanishListener(): VanishPluginMessageListener {
+        return vanishPluginMessageListener
     }
 }

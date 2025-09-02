@@ -43,10 +43,14 @@ class RadiumIntegration(
             baseUrl = configManager.getString(configManager.mainConfig, "radium.api.base_url", "http://localhost:8080")
             apiKey = configManager.getString(configManager.mainConfig, "radium.api.key", "").takeIf { it.isNotEmpty() && it != "null" }
             
-            // Ensure baseUrl ends with /api (removing the /v1 part as per new API structure)
+            // Ensure baseUrl ends with /api/v1 to match Radium's actual API structure
             baseUrl = baseUrl.trimEnd('/')
-            if (!baseUrl.endsWith("/api")) {
-                baseUrl = "$baseUrl/api"
+            if (!baseUrl.endsWith("/api/v1")) {
+                if (baseUrl.endsWith("/api")) {
+                    baseUrl = "$baseUrl/v1"
+                } else {
+                    baseUrl = "$baseUrl/api/v1"
+                }
             }
             
             println("Radium HTTP API integration initialized - URL: $baseUrl")
@@ -75,8 +79,8 @@ class RadiumIntegration(
             
             try {
                 // First try to get by UUID using the profiles endpoint
-                val request = buildGetRequest("/v1/profiles/uuid/$uuid")
-                logger.debug("Making API request to: $baseUrl/v1/profiles/uuid/$uuid")
+                val request = buildGetRequest("/profiles/uuid/$uuid")
+                logger.debug("Making API request to: $baseUrl/profiles/uuid/$uuid")
                 httpClient.newCall(request).execute().use { response ->
                     logger.debug("API response code: ${response.code}")
                     if (response.isSuccessful) {
@@ -110,10 +114,12 @@ class RadiumIntegration(
     fun getPlayerDataByName(username: String): CompletableFuture<PlayerData?> {
         return CompletableFuture.supplyAsync {
             try {
-                val request = buildGetRequest("/v1/profiles/$username")
+                val request = buildGetRequest("/profiles/$username")
+                logger.debug("Looking up player data for: $username via ${request.url}")
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val body = response.body?.string() ?: return@supplyAsync null
+                        logger.debug("Got response for $username: $body")
                         val jsonNode = objectMapper.readTree(body)
                         val playerData = parsePlayerDataFromProfile(jsonNode)
                         
@@ -123,21 +129,24 @@ class RadiumIntegration(
                             try {
                                 val uuid = UUID.fromString(uuidString)
                                 playerCache[uuid] = playerData
+                                logger.debug("Cached player data for $username (${uuid})")
                             } catch (e: IllegalArgumentException) {
-                                // Invalid UUID format
+                                logger.warn("Invalid UUID format in response: $uuidString")
                             }
                         }
                         
                         return@supplyAsync playerData
                     } else if (response.code == 404) {
+                        logger.debug("Player $username not found in Radium (404)")
                         return@supplyAsync null
                     } else {
-                        println("Error fetching player profile for $username: HTTP ${response.code}")
+                        val errorBody = response.body?.string() ?: "no body"
+                        logger.warn("Error fetching player profile for $username: HTTP ${response.code} - $errorBody")
                         return@supplyAsync null
                     }
                 }
             } catch (e: Exception) {
-                println("Error fetching player data for $username: ${e.message}")
+                logger.error("Error fetching player data for $username: ${e.message}", e)
                 return@supplyAsync null
             }
         }
@@ -238,7 +247,7 @@ class RadiumIntegration(
     fun getAllRanks(): CompletableFuture<List<RankData>> {
         return CompletableFuture.supplyAsync {
             try {
-                val request = buildGetRequest("/v1/ranks")
+                val request = buildGetRequest("/ranks")
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val body = response.body?.string() ?: return@supplyAsync emptyList()
@@ -267,7 +276,7 @@ class RadiumIntegration(
     fun getRank(rankName: String): CompletableFuture<RankData?> {
         return CompletableFuture.supplyAsync {
             try {
-                val request = buildGetRequest("/v1/ranks/$rankName")
+                val request = buildGetRequest("/ranks/$rankName")
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val body = response.body?.string() ?: return@supplyAsync null
@@ -356,7 +365,7 @@ class RadiumIntegration(
     fun getServerList(): CompletableFuture<List<ServerData>> {
         return CompletableFuture.supplyAsync {
             try {
-                val request = buildGetRequest("/v1/servers")
+                val request = buildGetRequest("/servers")
                 httpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val body = response.body?.string() ?: return@supplyAsync emptyList()
@@ -398,7 +407,7 @@ class RadiumIntegration(
     
     // Player sync methods for join/leave events
     fun syncPlayerOnJoin(player: Player) {
-        logger.info("Syncing player ${player.username} on join")
+
         
         // Check if player exists in Radium
         getPlayerData(player.uuid).thenAccept { playerData ->
@@ -406,7 +415,7 @@ class RadiumIntegration(
                 logger.info("Player ${player.username} not found in Radium - they need to connect to Radium proxy first")
                 // Player doesn't exist in Radium yet - they need to connect to the Radium proxy to be created
             } else {
-                logger.info("Player ${player.username} found in Radium with rank: ${playerData.rank?.name ?: "None"}")
+
             }
         }.exceptionally { throwable ->
             logger.error("Error syncing player ${player.username}: ${throwable.message}")
@@ -416,7 +425,7 @@ class RadiumIntegration(
     
     fun syncPlayerOnLeave(player: Player) {
         // TODO: Implement player sync on leave  
-        logger.info("Syncing player ${player.username} on leave")
+
     }
     
     // Chat formatting method
@@ -424,18 +433,16 @@ class RadiumIntegration(
         val cachedData = playerCache[player.uuid]
         
         return if (cachedData != null && cachedData.rank != null) {
-            // Use rank prefix and color
+            // Use rank prefix only (color is included in prefix)
             val prefix = cachedData.rank.prefix.ifEmpty { "" }
-            val color = cachedData.rank.color.ifEmpty { "&7" }
-            "$prefix$color${cachedData.username}&7: &f$message"
+            "$prefix${cachedData.username}&7: &f$message"
         } else {
             // Try to fetch fresh data if not cached
             try {
                 val playerData = getPlayerData(player.uuid).join()
                 if (playerData != null && playerData.rank != null) {
                     val prefix = playerData.rank.prefix.ifEmpty { "" }
-                    val color = playerData.rank.color.ifEmpty { "&7" }
-                    "$prefix$color${playerData.username}&7: &f$message"
+                    "$prefix${playerData.username}&7: &f$message"
                 } else {
                     // Use fallback from config
                     val fallbackPrefix = configManager.getString(configManager.mainConfig, "radium.fallback.default_prefix", "&7")
@@ -457,8 +464,7 @@ class RadiumIntegration(
             val playerData = getPlayerData(player.uuid).join()
             if (playerData != null && playerData.rank != null) {
                 val prefix = playerData.rank.prefix.ifEmpty { "" }
-                val color = playerData.rank.color.ifEmpty { "&7" }
-                "$prefix$color${player.username}"
+                "$prefix${player.username}"
             } else {
                 // Fallback formatting
                 val fallbackPrefix = configManager.getString(configManager.mainConfig, "radium.fallback.default_prefix", "&7")
@@ -476,8 +482,8 @@ class RadiumIntegration(
     fun isPlayerVanished(playerUuid: UUID): CompletableFuture<Boolean> {
         return CompletableFuture.supplyAsync {
             try {
-                val request = buildGetRequest("/api/players/uuid/${playerUuid}/vanish")
-                logger.debug("Checking vanish status for $playerUuid at: $baseUrl/api/players/uuid/${playerUuid}/vanish")
+                val request = buildGetRequest("/players/uuid/${playerUuid}/vanish")
+                logger.debug("Checking vanish status for $playerUuid at: $baseUrl/players/uuid/${playerUuid}/vanish")
                 httpClient.newCall(request).execute().use { response ->
                     logger.debug("Vanish API response code: ${response.code}")
                     if (response.isSuccessful) {
@@ -514,7 +520,7 @@ class RadiumIntegration(
     fun canSeeVanishedPlayer(viewerUuid: UUID, vanishedPlayerUuid: UUID): CompletableFuture<Boolean> {
         return CompletableFuture.supplyAsync {
             try {
-                val request = buildGetRequest("/api/players/uuid/${viewerUuid}/can-see-vanished/${vanishedPlayerUuid}")
+                val request = buildGetRequest("/players/uuid/${viewerUuid}/can-see-vanished/${vanishedPlayerUuid}")
                 logger.debug("Checking vanish visibility for viewer $viewerUuid -> target $vanishedPlayerUuid")
                 httpClient.newCall(request).execute().use { response ->
                     logger.debug("Vanish visibility API response code: ${response.code}")
@@ -679,5 +685,23 @@ class RadiumIntegration(
     fun makeApiRequest(endpoint: String): Response {
         val request = buildGetRequest(endpoint)
         return httpClient.newCall(request).execute()
+    }
+
+    /**
+     * Get player's rank weight for punishment validation
+     */
+    fun getRankWeight(uuid: UUID): CompletableFuture<Int> {
+        return getPlayerData(uuid).thenApply { playerData ->
+            playerData?.rank?.weight ?: 0
+        }
+    }
+
+    /**
+     * Get player UUID by username from Radium
+     */
+    fun getPlayerUuidByName(username: String): CompletableFuture<UUID?> {
+        return getPlayerDataByName(username).thenApply { playerData ->
+            playerData?.uuid
+        }
     }
 }

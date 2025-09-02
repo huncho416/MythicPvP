@@ -4,6 +4,18 @@
 // Switch to the radium database
 db = db.getSiblingDB('radium');
 
+// Create the application user to match database.yml configuration
+db.createUser({
+  user: 'radium',
+  pwd: 'radium123',
+  roles: [
+    {
+      role: 'readWrite',
+      db: 'radium'
+    }
+  ]
+});
+
 // Create collections with initial indexes
 db.createCollection('profiles');
 db.createCollection('ranks');

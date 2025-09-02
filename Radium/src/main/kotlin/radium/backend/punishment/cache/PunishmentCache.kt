@@ -1,6 +1,11 @@
 package radium.backend.punishment.cache
 
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
+import java.time.Instant
 import io.lettuce.core.api.async.RedisAsyncCommands
 import kotlinx.coroutines.future.await
 import net.kyori.adventure.text.Component
@@ -21,7 +26,26 @@ class PunishmentCache(
     private val lettuceCache: LettuceCache,
     private val logger: ComponentLogger
 ) {
-    private val gson = Gson()
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(Instant::class.java, object : TypeAdapter<Instant>() {
+            override fun write(out: JsonWriter, value: Instant?) {
+                if (value == null) {
+                    out.nullValue()
+                } else {
+                    out.value(value.epochSecond)
+                }
+            }
+            
+            override fun read(`in`: JsonReader): Instant? {
+                return if (`in`.peek() == com.google.gson.stream.JsonToken.NULL) {
+                    `in`.nextNull()
+                    null
+                } else {
+                    Instant.ofEpochSecond(`in`.nextLong())
+                }
+            }
+        })
+        .create()
     private val redis: RedisAsyncCommands<String, String> = lettuceCache.async()
     
     // Local cache for frequently accessed data (cache-aside pattern)

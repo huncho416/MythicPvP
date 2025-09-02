@@ -10,6 +10,7 @@ import revxrsal.commands.velocity.annotation.CommandPermission
 import radium.backend.Radium
 import radium.backend.annotations.OnlinePlayers
 import radium.backend.vanish.VanishLevel
+import radium.backend.util.*
 
 @Command("vanish")
 @CommandPermission("radium.vanish.use")

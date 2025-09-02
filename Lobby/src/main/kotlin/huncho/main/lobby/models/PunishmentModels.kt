@@ -227,7 +227,7 @@ enum class UpdateAction {
 
 /**
  * Request DTO for issuing punishments via Radium's API
- * Matches the PunishmentRequest in Radium
+ * Updated to match Radium's exact PunishmentRequest structure
  */
 data class PunishmentRequest(
     @SerializedName("target")
@@ -249,22 +249,8 @@ data class PunishmentRequest(
     val silent: Boolean = false,
     
     @SerializedName("clearInventory")
-    val clearInventory: Boolean = false,
-    
-    @SerializedName("priority")
-    val priority: Priority = Priority.NORMAL
-) {
-    enum class Priority {
-        @SerializedName("LOW")
-        LOW,
-        
-        @SerializedName("NORMAL")
-        NORMAL,
-        
-        @SerializedName("HIGH")
-        HIGH
-    }
-}
+    val clearInventory: Boolean = false
+)
 
 /**
  * Request DTO for revoking punishments via Radium's API

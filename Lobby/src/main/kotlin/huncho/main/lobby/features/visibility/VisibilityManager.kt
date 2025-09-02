@@ -1,7 +1,6 @@
 package huncho.main.lobby.features.visibility
 
 import huncho.main.lobby.LobbyPlugin
-import huncho.main.lobby.models.VanishLevel
 import huncho.main.lobby.utils.MessageUtils
 import net.minestom.server.entity.Player
 import net.minestom.server.MinecraftServer
@@ -26,16 +25,17 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
      * Register event handlers for vanish visibility
      */
     fun registerEvents(eventHandler: GlobalEventHandler) {
-        eventHandler.addListener(PlayerSpawnEvent::class.java) { event ->
-            // Update visibility for the spawning player
-            CompletableFuture.runAsync {
-                runBlocking {
-                    updatePlayerVisibilityForVanish(event.player)
-                    // Also update other players' visibility to this player
-                    updateVisibilityForAll()
-                }
-            }
-        }
+        // DISABLED: This conflicts with VanishPluginMessageListener's more precise handling
+        // eventHandler.addListener(PlayerSpawnEvent::class.java) { event ->
+        //     // Update visibility for the spawning player
+        //     CompletableFuture.runAsync {
+        //         runBlocking {
+        //             updatePlayerVisibilityForVanish(event.player)
+        //             // Also update other players' visibility to this player
+        //             updateVisibilityForAll()
+        //         }
+        //     }
+        // }
     }
     
     /**
@@ -148,7 +148,7 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
                     val shouldShow = when (existingMode) {
                         VisibilityMode.ALL -> {
                             if (isVanished) {
-                                // Check if existing player can see vanished players
+                                // Check if existing player can see vanished players using weight-based system
                                 plugin.radiumIntegration.canSeeVanishedPlayer(existingPlayer.uuid, newPlayer.uuid).join()
                             } else {
                                 true
@@ -210,31 +210,31 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
      */
     suspend fun updatePlayerVisibilityForVanish(player: Player) {
         try {
-            val isVanished = plugin.vanishPluginMessageListener.isPlayerVanished(player.uuid)
+            val isVanished = plugin.radiumIntegration.isPlayerVanished(player.uuid).join()
             
             // Get all players in the same instance
             val allPlayers = player.instance?.players ?: emptySet()
             
             plugin.logger.debug("Updating vanish visibility for ${player.username} (vanished: $isVanished) to ${allPlayers.size} viewers")
             
-            for (otherPlayer in allPlayers) {
-                if (otherPlayer.uuid != player.uuid) {
+            for (viewer in allPlayers) {
+                if (viewer.uuid != player.uuid) {
                     if (isVanished) {
-                        val canSee = plugin.vanishPluginMessageListener.canSeeVanished(otherPlayer, player.uuid)
-                        if (!canSee) {
-                            // CRITICAL: Hide vanished player from viewers who can't see them (defaults)
-                            hidePlayerFromViewer(otherPlayer, player)
+                        // Check if this viewer can see the vanished player using rank weights
+                        val canSee = canPlayerSeeVanished(viewer, player.uuid)
+                        plugin.logger.debug("${viewer.username} ${if (canSee) "CAN" else "CANNOT"} see vanished ${player.username}")
+                        
+                        if (canSee) {
+                            // Show vanished player to viewers who can see them (staff with sufficient rank)
+                            showPlayerToViewer(viewer, player)
                         } else {
-                            // Show vanished player to viewers who can see them (staff)
-                            showPlayerToViewer(otherPlayer, player)
+                            // CRITICAL: Hide vanished player from viewers who can't see them (defaults/lower ranks)
+                            hidePlayerFromViewer(viewer, player)
                         }
                     } else {
                         // CRITICAL: Player is not vanished - ensure they're visible to everyone
-                        showPlayerToViewer(otherPlayer, player)
+                        showPlayerToViewer(viewer, player)
                     }
-                    
-                    // Also check visibility in the reverse direction
-                    updatePlayerVisibilityBidirectional(player, otherPlayer)
                 }
             }
             
@@ -251,35 +251,8 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
      * Update visibility bidirectionally between two players
      */
     private suspend fun updatePlayerVisibilityBidirectional(player1: Player, player2: Player) {
-        try {
-            // Check if player1 can see player2
-            val player2Vanished = plugin.vanishPluginMessageListener.isPlayerVanished(player2.uuid)
-            if (player2Vanished) {
-                val canSeePlayer2 = plugin.vanishPluginMessageListener.canSeeVanished(player1, player2.uuid)
-                if (canSeePlayer2) {
-                    showPlayerToViewer(player1, player2)
-                } else {
-                    hidePlayerFromViewer(player1, player2)
-                }
-            } else {
-                showPlayerToViewer(player1, player2)
-            }
-            
-            // Check if player2 can see player1  
-            val player1Vanished = plugin.vanishPluginMessageListener.isPlayerVanished(player1.uuid)
-            if (player1Vanished) {
-                val canSeePlayer1 = plugin.vanishPluginMessageListener.canSeeVanished(player2, player1.uuid)
-                if (canSeePlayer1) {
-                    showPlayerToViewer(player2, player1)
-                } else {
-                    hidePlayerFromViewer(player2, player1)
-                }
-            } else {
-                showPlayerToViewer(player2, player1)
-            }
-        } catch (e: Exception) {
-            plugin.logger.warn("Error updating bidirectional visibility between ${player1.username} and ${player2.username}", e)
-        }
+        // This is now handled in VanishPluginMessageListener to avoid duplication
+        // Keeping this method for any special cases that might need it
     }
     
     /**
@@ -305,9 +278,9 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
      */
     private fun hidePlayerFromViewer(viewer: Player, target: Player) {
         try {
-            // FIXED: Remove target from viewer's sight (not viewer from target's list)
-            if (viewer.viewers.contains(target)) {
-                viewer.removeViewer(target)
+            // FIXED: Remove viewer from target's viewer list (so viewer can't see target)
+            if (target.viewers.contains(viewer)) {
+                target.removeViewer(viewer)
                 plugin.logger.debug("🚫 Hidden ${target.username} from ${viewer.username} (vanish)")
             }
         } catch (e: Exception) {
@@ -321,9 +294,9 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
      */
     private fun showPlayerToViewer(viewer: Player, target: Player) {
         try {
-            // FIXED: Add target to viewer's sight (not viewer to target's list)
-            if (!viewer.viewers.contains(target)) {
-                viewer.addViewer(target)
+            // FIXED: Add viewer to target's viewer list (so viewer can see target)
+            if (!target.viewers.contains(viewer)) {
+                target.addViewer(viewer)
                 plugin.logger.debug("✅ Shown ${target.username} to ${viewer.username} (visible)")
             }
         } catch (e: Exception) {
@@ -347,37 +320,15 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
     }
 
     /**
-     * ENHANCED: Weight-based vanish visibility checking
-     * Integrates with Radium's rank weight system for proper vanish levels
+     * SIMPLIFIED: Weight-based vanish visibility checking
+     * Direct integration with Radium's rank weight system - no enum conversion needed
      */
     suspend fun canPlayerSeeVanished(viewer: Player, vanishedPlayerUuid: UUID): Boolean {
         try {
-            val vanishData = plugin.vanishPluginMessageListener.getVanishData(vanishedPlayerUuid) ?: return true
-            
-            // Get viewer's rank data from Radium
-            val viewerData = plugin.radiumIntegration.getPlayerData(viewer.uuid).join()
-            val viewerWeight = viewerData?.rank?.weight ?: 0
-            
-            // Check if viewer has override permission first
-            val hasOverridePermission = plugin.radiumIntegration.hasPermission(viewer.uuid, "radium.vanish.see").join()
-            if (hasOverridePermission) {
-                plugin.logger.debug("${viewer.username} can see vanished player due to override permission")
-                return true
-            }
-            
-            // CRITICAL: Weight-based visibility checking (matching Radium's system)
-            val canSeeBasedOnWeight = when (vanishData.level) {
-                VanishLevel.HELPER -> viewerWeight >= 25      // Helper+ can see Helper vanish
-                VanishLevel.MODERATOR -> viewerWeight >= 50   // Moderator+ can see Moderator vanish
-                VanishLevel.ADMIN -> viewerWeight >= 75       // Admin+ can see Admin vanish  
-                VanishLevel.OWNER -> viewerWeight >= 100      // Owner+ can see Owner vanish
-            }
-            
-            plugin.logger.debug("Weight-based vanish check: ${viewer.username} (weight: $viewerWeight) vs ${vanishData.level} level - can see: $canSeeBasedOnWeight")
-            return canSeeBasedOnWeight
-            
+            // Use Radium integration to check if viewer can see vanished player
+            return plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, vanishedPlayerUuid).join()
         } catch (e: Exception) {
-            plugin.logger.warn("Error checking vanish visibility for ${viewer.username}", e)
+            plugin.logger.warn("Error checking vanish visibility for ${viewer.username}: ${e.message}")
             return false // Default to not showing vanished players on error
         }
     }
@@ -391,7 +342,7 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
             plugin.logger.debug("Handling join visibility for ${newPlayer.username}")
             
             // Check if the new player is vanished
-            val newPlayerVanished = plugin.vanishPluginMessageListener.isPlayerVanished(newPlayer.uuid)
+            val newPlayerVanished = plugin.radiumIntegration.isPlayerVanished(newPlayer.uuid).join()
             
             // Update visibility for all existing players
             MinecraftServer.getConnectionManager().onlinePlayers.forEach { existingPlayer ->
@@ -413,7 +364,7 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
                     }
                     
                     // 2. Check if new player can see the existing player
-                    val existingPlayerVanished = plugin.vanishPluginMessageListener.isPlayerVanished(existingPlayer.uuid)
+                    val existingPlayerVanished = plugin.radiumIntegration.isPlayerVanished(existingPlayer.uuid).join()
                     if (existingPlayerVanished) {
                         val canSeeExistingPlayer = canPlayerSeeVanished(newPlayer, existingPlayer.uuid)
                         if (canSeeExistingPlayer) {
@@ -444,8 +395,8 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
      * Check if viewer can see target
      */
     private fun canSeePlayer(viewer: Player, target: Player): Boolean {
-        // Check if the target player is in the viewer's viewable entities
-        return viewer.viewers.contains(target)
+        // Check if the viewer is in the target's viewer list (so viewer can see target)
+        return target.viewers.contains(viewer)
     }
     
     /**

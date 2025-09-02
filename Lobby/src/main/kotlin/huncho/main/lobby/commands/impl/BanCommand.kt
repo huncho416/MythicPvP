@@ -4,6 +4,7 @@ import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.api.PunishmentApiResult
 import huncho.main.lobby.models.PunishmentRequest
 import huncho.main.lobby.utils.MessageUtils
+import huncho.main.lobby.utils.PlayerLookupUtils
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.minestom.server.MinecraftServer
@@ -79,16 +80,39 @@ class BanCommand(private val plugin: LobbyPlugin) : Command("ban") {
         GlobalScope.launch {
             try {
                 MessageUtils.sendMessage(player, "&7Processing ban for $target...")
+                plugin.logger.info("${player.username} is attempting to ban $target for: $reason")
+                
+                // First, resolve the target player
+                val playerInfo = PlayerLookupUtils.resolvePlayer(target).get()
+                plugin.logger.info("Player lookup result for $target: $playerInfo")
+                if (playerInfo == null) {
+                    MessageUtils.sendMessage(player, "&c✗ Player '$target' not found")
+                    MessageUtils.sendMessage(player, "&7Make sure the player has joined the server before.")
+                    plugin.logger.warn("Failed to resolve player: $target")
+                    return@launch
+                }
+                
+                plugin.logger.info("Resolved player: ${playerInfo.name} (${playerInfo.uuid})")
+                
+                // Check rank weight permissions
+                val canPunish = PlayerLookupUtils.canPunish(plugin, player.uuid, playerInfo.uuid).get()
+                plugin.logger.info("Rank weight check - ${player.username} can punish ${playerInfo.name}: $canPunish")
+                if (!canPunish) {
+                    val weightInfo = PlayerLookupUtils.getRankWeightInfo(plugin, player.uuid, playerInfo.uuid).get()
+                    MessageUtils.sendMessage(player, "&c✗ You cannot punish ${playerInfo.name}")
+                    MessageUtils.sendMessage(player, "&7Your rank weight (${weightInfo.first}) is not higher than theirs (${weightInfo.second})")
+                    plugin.logger.warn("${player.username} cannot punish ${playerInfo.name} - insufficient rank weight")
+                    return@launch
+                }
                 
                 val request = PunishmentRequest(
-                    target = target,
+                    target = playerInfo.name, // Use player name as target
                     type = "BAN",
                     reason = reason,
                     staffId = player.uuid.toString(),
                     duration = null, // Permanent ban
                     silent = false,
-                    clearInventory = false,
-                    priority = PunishmentRequest.Priority.NORMAL
+                    clearInventory = false
                 )
                 
                 val result = plugin.radiumPunishmentAPI.issuePunishment(request)
@@ -106,20 +130,20 @@ class BanCommand(private val plugin: LobbyPlugin) : Command("ban") {
                             }
                         }
                         
-                        plugin.logger.info("${player.username} successfully banned $target for: $reason")
+                        plugin.logger.info("${player.username} successfully banned ${playerInfo.name} (${playerInfo.uuid}) for: $reason")
                     }
                     result.isError -> {
                         val errorMessage = result.getErrorMessage() ?: "Unknown error"
-                        MessageUtils.sendMessage(player, "&c✗ Failed to ban $target")
+                        MessageUtils.sendMessage(player, "&c✗ Failed to ban ${playerInfo.name}")
                         MessageUtils.sendMessage(player, "&7Error: $errorMessage")
                         
                         if (errorMessage.contains("404") || errorMessage.contains("not found")) {
-                            MessageUtils.sendMessage(player, "&eTarget player may not exist or may never have joined the server.")
+                            MessageUtils.sendMessage(player, "&ePlayer data may be corrupted or invalid.")
                         } else if (errorMessage.contains("Service unavailable")) {
                             MessageUtils.sendMessage(player, "&eRadium punishment service is temporarily unavailable. Try again later.")
                         }
                         
-                        plugin.logger.warn("${player.username} failed to ban $target: $errorMessage")
+                        plugin.logger.warn("${player.username} failed to ban ${playerInfo.name}: $errorMessage")
                     }
                 }
                 

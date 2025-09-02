@@ -32,7 +32,6 @@ class ItemProtectionListener(private val plugin: LobbyPlugin, private val monito
             if (droppedItem != null && droppedItem.material() != Material.AIR) {
                 // Use material-based identification since component access is problematic
                 if (monitor.isJoinItemByMaterial(droppedItem.material())) {
-                    plugin.logger.debug("[ItemProtection] Prevented ${entity.username} from dropping join item: ${droppedItem.material().name()}")
                     return EventListener.Result.INVALID
                 }
             }
@@ -64,7 +63,6 @@ class ItemPickupListener(private val plugin: LobbyPlugin) : EventListener<Pickup
         }
         
         // For now, prevent all item pickups for non-admins to keep lobby clean
-        plugin.logger.debug("[ItemProtection] Prevented ${entity.username} from picking up item")
         return EventListener.Result.INVALID
     }
 }

@@ -4,8 +4,10 @@ import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.api.PunishmentApiResult
 import huncho.main.lobby.models.PunishmentRevokeRequest
 import huncho.main.lobby.utils.MessageUtils
+import huncho.main.lobby.utils.PlayerLookupUtils
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import net.minestom.server.MinecraftServer
 import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
 import net.minestom.server.entity.Player

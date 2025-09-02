@@ -1,354 +1,221 @@
 package huncho.main.lobby.listeners
 
 import com.google.gson.Gson
-import com.google.gson.JsonObject
 import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.models.VanishData
-import huncho.main.lobby.models.VanishLevel
 import net.minestom.server.MinecraftServer
 import net.minestom.server.entity.Player
 import net.minestom.server.event.EventListener
 import net.minestom.server.event.player.PlayerPluginMessageEvent
-import kotlinx.coroutines.runBlocking
+import net.minestom.server.timer.TaskSchedule
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Handles plugin messages from Radium proxy for vanish state synchronization
- * Channel: radium:vanish
+ * Handles plugin messages from Radium for vanish state management
  */
 class VanishPluginMessageListener(private val plugin: LobbyPlugin) : EventListener<PlayerPluginMessageEvent> {
     
     private val gson = Gson()
-    private val vanishedPlayers = ConcurrentHashMap<UUID, VanishData>()
+    private val vanishData = ConcurrentHashMap<UUID, VanishData>()
     
     override fun eventType(): Class<PlayerPluginMessageEvent> = PlayerPluginMessageEvent::class.java
-
+    
     override fun run(event: PlayerPluginMessageEvent): EventListener.Result {
-        // Check if this is a vanish message
-        if (event.identifier != "radium:vanish") {
-            return EventListener.Result.SUCCESS
-        }
-        
-        try {
-            val messageData = String(event.message)
-            plugin.logger.debug("Received vanish plugin message: $messageData")
-            
-            val jsonObject = gson.fromJson(messageData, JsonObject::class.java)
-            val action = jsonObject.get("action")?.asString ?: jsonObject.get("type")?.asString ?: return EventListener.Result.SUCCESS
-            
-            when (action) {
-                "set_vanish", "VANISH_STATE", "vanish" -> handleVanishStateChange(jsonObject)
-                "batch_update", "VANISH_BATCH_UPDATE" -> handleBatchUpdate(jsonObject)
-                "remove_vanish", "unvanish" -> handleUnvanish(jsonObject)
-                else -> plugin.logger.debug("Unknown vanish action: $action")
+        // Handle plugin messages from Radium
+        if (event.identifier == "radium:vanish") {
+            try {
+                val message = String(event.message)
+
+                
+                // Try to parse as a general JSON first to detect message type
+                val jsonMap = gson.fromJson(message, Map::class.java) as Map<String, Any?>
+                val action = jsonMap["action"] as? String
+                
+                when (action) {
+                    "batch_update" -> {
+                        // Handle batch update messages
+                        val updates = jsonMap["updates"] as? List<Map<String, Any?>>
+                        if (updates != null) {
+                            for (update in updates) {
+                                val batchMessage = VanishMessage(
+                                    action = update["action"] as? String,
+                                    player = update["player"] as? String,
+                                    playerName = update["playerName"] as? String,
+                                    vanished = update["vanished"] as? Boolean ?: false,
+                                    level = (update["level"] as? Number)?.toInt() ?: 0
+                                )
+                                handleVanishMessage(batchMessage)
+                            }
+                        } else {
+                            plugin.logger.warn("Received batch_update with no updates array")
+                        }
+                    }
+                    "set_vanish" -> {
+                        // Handle individual vanish messages
+                        val vanishMessage = gson.fromJson(message, VanishMessage::class.java)
+
+                        handleVanishMessage(vanishMessage)
+                    }
+                    else -> {
+
+                    }
+                }
+                
+            } catch (e: Exception) {
+                plugin.logger.warn("Error processing vanish plugin message: ${String(event.message)}", e)
             }
-            
-        } catch (e: Exception) {
-            plugin.logger.error("Error processing vanish plugin message", e)
         }
         
         return EventListener.Result.SUCCESS
     }
-    
-    /**
-     * Handle individual vanish state change
-     * FIXED: Enhanced entity visibility updates for proper vanish functionality
-     */
-    private fun handleVanishStateChange(data: JsonObject) {
+      private fun handleVanishMessage(message: VanishMessage) {
         try {
-            // Handle both "player_id" and "player" keys for compatibility
-            val playerUuid = UUID.fromString(
-                data.get("player_id")?.asString ?: data.get("player")?.asString ?: return
-            )
-            val vanished = data.get("vanished")?.asBoolean ?: return
-            val levelString = data.get("level")?.asString
-            val levelInt = data.get("level")?.asInt
-            val vanishedByString = data.get("vanishedBy")?.asString ?: data.get("vanished_by")?.asString
-            val reason = data.get("reason")?.asString
-            
-            plugin.logger.debug("Processing vanish state change: player=$playerUuid, vanished=$vanished, level=${levelString ?: levelInt}")
-            
-            if (vanished) {
-                // Player is being vanished - handle both string and integer levels
-                val level = when {
-                    levelString != null -> VanishLevel.fromString(levelString)
-                    levelInt != null -> VanishLevel.fromLevel(levelInt)
-                    else -> VanishLevel.HELPER
-                }
-                val vanishedBy = vanishedByString?.let { UUID.fromString(it) }
-                
-                val vanishData = VanishData.create(
-                    playerId = playerUuid,
-                    level = level,
-                    vanishedBy = vanishedBy,
-                    reason = reason
-                )
-                
-                vanishedPlayers[playerUuid] = vanishData
-                plugin.logger.info("Player $playerUuid vanished at level ${level.displayName}")
-            } else {
-                // Player is being unvanished
-                vanishedPlayers.remove(playerUuid)
-                plugin.logger.info("Player $playerUuid unvanished")
+            // Add null safety for player UUID
+            val playerUuidString = message.player
+            if (playerUuidString.isNullOrEmpty()) {
+                plugin.logger.warn("Received vanish message with null/empty player UUID: $message")
+                return
             }
+
+            val playerUuid = UUID.fromString(playerUuidString)
             
-            // CRITICAL: Update entity visibility immediately for all players  
-            updatePlayerVisibilityComprehensive(playerUuid)
+            // Try to get player name from the message or from connected players
+            val playerName = message.playerName 
+                ?: MinecraftServer.getConnectionManager().onlinePlayers.find { it.uuid == playerUuid }?.username 
+                ?: "Unknown"
             
-        } catch (e: Exception) {
-            plugin.logger.error("Error handling vanish state change", e)
-        }
-    }
-    
-    /**
-     * Handle batch vanish updates for performance
-     */
-    private fun handleBatchUpdate(data: JsonObject) {
-        try {
-            val updates = data.getAsJsonArray("updates") ?: return
-            
-            updates.forEach { updateElement ->
-                val update = updateElement.asJsonObject
-                // Handle both "player_id" and "player" keys
-                val playerUuid = UUID.fromString(
-                    update.get("player_id")?.asString ?: update.get("player")?.asString ?: return@forEach
-                )
-                val vanished = update.get("vanished")?.asBoolean ?: return@forEach
-                
-                if (vanished) {
-                    // Handle both string and integer levels
-                    val level = when {
-                        update.get("level")?.asString != null -> VanishLevel.valueOf(update.get("level").asString.uppercase())
-                        update.get("level")?.asInt != null -> VanishLevel.fromLevel(update.get("level").asInt)
-                        else -> VanishLevel.HELPER
-                    }
-                    val vanishData = VanishData.create(playerUuid, level)
-                    vanishedPlayers[playerUuid] = vanishData
-                } else {
-                    vanishedPlayers.remove(playerUuid)
-                }
-                
-                // Update visibility for this player
-                updatePlayerVisibility(playerUuid)
-            }
-            
-            plugin.logger.debug("Processed batch vanish update with ${updates.size()} changes")
-            
-        } catch (e: Exception) {
-            plugin.logger.error("Error handling batch vanish update", e)
-        }
-    }
-    
-    /**
-     * Handle unvanish message
-     */
-    private fun handleUnvanish(data: JsonObject) {
-        try {
-            // Handle both "player_id" and "player" keys
-            val playerUuid = UUID.fromString(
-                data.get("player_id")?.asString ?: data.get("player")?.asString ?: return
-            )
-            vanishedPlayers.remove(playerUuid)
-            updatePlayerVisibility(playerUuid)
-            plugin.logger.info("Player $playerUuid unvanished via remove message")
-        } catch (e: Exception) {
-            plugin.logger.error("Error handling unvanish message", e)
-        }
-    }
-    
-    /**
-     * Update visibility for a specific player with enhanced refresh logic
-     */
-    private fun updatePlayerVisibility(changedPlayerUuid: UUID) {
-        runBlocking {
-            val changedPlayer = MinecraftServer.getConnectionManager().onlinePlayers.find { it.uuid == changedPlayerUuid }
-            
-            // Update visibility for the changed player if they're online
-            if (changedPlayer != null) {
-                plugin.visibilityManager.updatePlayerVisibilityForVanish(changedPlayer)
-                plugin.tabListManager.updatePlayerTabList(changedPlayer)
-                
-                // For each other player, update their visibility to the changed player
-                MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
-                    if (viewer.uuid != changedPlayerUuid) {
-                        updateVisibilityBetweenPlayers(viewer, changedPlayer)
-                    }
-                }
-            }
-            
-            // Update visibility for all other players to see the changed player correctly
-            MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
-                if (viewer.uuid != changedPlayerUuid) {
-                    plugin.visibilityManager.updatePlayerVisibilityForVanish(viewer)
-                    plugin.tabListManager.updatePlayerTabList(viewer)
-                    
-                    // Force refresh entity visibility specifically for the changed player
-                    if (changedPlayer != null) {
-                        refreshEntityVisibility(viewer, changedPlayer)
-                    }
-                }
-            }
-            
-            // Force complete tab list refresh for major vanish changes
-            plugin.tabListManager.refreshAllTabLists()
-            
-            plugin.logger.debug("Updated visibility for all players after vanish change for ${changedPlayer?.username ?: changedPlayerUuid}")
-        }
-    }
-    
-    /**
-     * ENHANCED: Comprehensive visibility update for critical vanish functionality
-     * Fixes the core issue where unvanished players don't reappear properly
-     */
-    private fun updatePlayerVisibilityComprehensive(changedPlayerUuid: UUID) {
-        runBlocking {
-            val changedPlayer = MinecraftServer.getConnectionManager().onlinePlayers.find { it.uuid == changedPlayerUuid }
-            val isVanished = isPlayerVanished(changedPlayerUuid)
-            
-            plugin.logger.debug("Comprehensive visibility update for ${changedPlayer?.username ?: changedPlayerUuid} (vanished: $isVanished)")
-            
-            if (changedPlayer != null) {
-                // CRITICAL: Update visibility for all online players regarding this player
-                updatePlayerVisibilityForAllViewers(changedPlayer, isVanished)
-                
-                // Update the changed player's own visibility and tab
-                plugin.visibilityManager.updatePlayerVisibilityForVanish(changedPlayer)
-            }
-            
-            // CRITICAL: Force complete refresh to ensure consistency (with new tab refresh method)
-            plugin.tabListManager.refreshAllTabLists()
-            
-            // CRITICAL FIX: Also force individual tab refresh for the changed player
-            if (changedPlayer != null) {
-                plugin.tabListManager.forcePlayerTabRefresh(changedPlayer)
-            }
-            
-            plugin.logger.info("✅ Completed comprehensive visibility update for ${changedPlayer?.username ?: changedPlayerUuid}")
-        }
-    }
-    
-    /**
-     * ENHANCED: Update visibility for all viewers regarding a specific player
-     * Ensures proper entity visibility and tab list entries
-     */
-    private suspend fun updatePlayerVisibilityForAllViewers(targetPlayer: Player, isVanished: Boolean) {
-        MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
-            if (viewer.uuid != targetPlayer.uuid) {
-                if (isVanished) {
-                    // Player is vanished - check if viewer can see them
-                    val canSee = canSeeVanished(viewer, targetPlayer.uuid)
-                    if (canSee) {
-                        // Show vanished player to authorized viewers (staff) with [V] indicator
-                        showPlayerToViewer(viewer, targetPlayer)
-                        plugin.tabListManager.showPlayerWithVanishIndicator(targetPlayer, viewer)
-                        plugin.logger.debug("✅ Showing vanished ${targetPlayer.username} to authorized ${viewer.username}")
+            when (message.action) {
+                "set_vanish" -> {
+                    if (message.vanished) {
+                        // Player became vanished
+                        val data = VanishData(
+                            playerUuid = playerUuid,
+                            playerName = playerName,
+                            vanished = true,
+                            level = message.level,
+                            requiredWeight = message.level,
+                            timestamp = System.currentTimeMillis()
+                        )
+                        vanishData[playerUuid] = data
+                        
+
+                        
+                        // Notify packet vanish manager
+                        try {
+                            plugin.packetVanishManager.handlePlayerVanish(playerUuid)
+                        } catch (e: Exception) {
+
+                        }
                     } else {
-                        // Hide vanished player from unauthorized viewers (defaults)
-                        hidePlayerFromViewer(viewer, targetPlayer)
-                        plugin.tabListManager.hidePlayerFromTab(targetPlayer, viewer)
-                        plugin.logger.debug("❌ Hiding vanished ${targetPlayer.username} from ${viewer.username}")
+                        // Player became unvanished
+                        val oldData = vanishData.remove(playerUuid)
+                        val finalPlayerName = oldData?.playerName ?: playerName
+                        
+
+                        
+                        // Notify packet vanish manager first
+                        try {
+                            plugin.packetVanishManager.handlePlayerUnvanish(playerUuid)
+                        } catch (e: Exception) {
+
+                        }
+                        
+                        // Schedule a delayed visibility update to ensure packet manager processes first
+                        val scheduler = MinecraftServer.getSchedulerManager()
+                        scheduler.submitTask {
+                            val player = MinecraftServer.getConnectionManager().onlinePlayers.find { it.uuid == playerUuid }
+                            if (player != null) {
+
+                                updatePlayerVisibility(player)
+                            }
+                            TaskSchedule.stop()
+                        }
                     }
-                } else {
-                    // Player is not vanished - ensure visible to everyone
-                    showPlayerToViewer(viewer, targetPlayer)
-                    plugin.tabListManager.showPlayerInTab(targetPlayer, viewer)
-                    plugin.logger.debug("✅ Showing unvanished ${targetPlayer.username} to ${viewer.username}")
+                    
+                    // For vanish case, update visibility immediately
+                    // For unvanish case, we already scheduled a delayed update above
+                    if (message.vanished) {
+                        val player = MinecraftServer.getConnectionManager().onlinePlayers.find { it.uuid == playerUuid }
+                        if (player != null) {
+                            updatePlayerVisibility(player)
+                        } else {
+
+                        }
+                    }
+                    
+                } else -> {
+
                 }
             }
-        }
-    }
-    
-    /**
-     * Show player to specific viewer using enhanced entity visibility
-     * CRITICAL FIX: Correct viewer/target relationship
-     */
-    private suspend fun showPlayerToViewer(viewer: Player, target: Player) {
-        try {
-            // FIXED: Add target to viewer's sight (not viewer to target's list)
-            if (!viewer.viewers.contains(target)) {
-                viewer.addViewer(target)
-                plugin.logger.debug("✅ Showed ${target.username} to ${viewer.username}")
-            }
         } catch (e: Exception) {
-            plugin.logger.warn("Failed to show ${target.username} to ${viewer.username}", e)
+            plugin.logger.warn("Error handling vanish message: $message", e)
         }
     }
     
-    /**
-     * Hide player from specific viewer using enhanced entity visibility
-     * CRITICAL FIX: Correct viewer/target relationship
-     */
-    private suspend fun hidePlayerFromViewer(viewer: Player, target: Player) {
+    private fun updatePlayerVisibility(player: Player) {
         try {
-            // FIXED: Remove target from viewer's sight (not viewer from target's list)
-            if (viewer.viewers.contains(target)) {
-                viewer.removeViewer(target)
-                plugin.logger.debug("❌ Hidden ${target.username} from ${viewer.username}")
-            }
-        } catch (e: Exception) {
-            plugin.logger.warn("Failed to hide ${target.username} from ${viewer.username}", e)
-        }
-    }
-    
-    /**
-     * Update visibility between two specific players based on vanish status
-     */
-    private suspend fun updateVisibilityBetweenPlayers(viewer: Player, target: Player) {
-        try {
-            val targetVanished = isPlayerVanished(target.uuid)
+            val isVanished = isPlayerVanished(player.uuid)
             
-            if (targetVanished) {
-                val canSee = canSeeVanished(viewer, target.uuid)
-                if (canSee) {
-                    // Ensure target is visible to viewer
-                    if (!target.viewers.contains(viewer)) {
-                        target.addViewer(viewer)
-                        plugin.logger.debug("Added ${target.username} to ${viewer.username}'s view (staff can see vanished)")
-                    }
-                } else {
-                    // Ensure target is hidden from viewer
-                    if (target.viewers.contains(viewer)) {
-                        target.removeViewer(viewer)
-                        plugin.logger.debug("Removed ${target.username} from ${viewer.username}'s view (hidden)")
+
+            
+            if (!isVanished) {
+                // Player is unvanished - they should be visible to everyone
+
+                
+                MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
+                    if (viewer.uuid != player.uuid) {
+                        // Force remove and re-add viewer to trigger fresh spawn packets
+                        if (player.viewers.contains(viewer)) {
+                            player.removeViewer(viewer)
+
+                        }
+                        
+                        // Add viewer back
+                        player.addViewer(viewer)
+
+                        
+                        // Also ensure the unvanished player can see other players
+                        if (!viewer.viewers.contains(player)) {
+                            viewer.addViewer(player)
+
+                        }
                     }
                 }
             } else {
-                // Target is not vanished - ensure visible
-                if (!target.viewers.contains(viewer)) {
-                    target.addViewer(viewer)
-                    plugin.logger.debug("Added ${target.username} to ${viewer.username}'s view (not vanished)")
+                // Player is vanished - check permissions for each viewer
+                MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
+                    if (viewer.uuid != player.uuid) {
+                        val canSee = try {
+                            val result = plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, player.uuid).join()
+
+                            result
+                        } catch (e: Exception) {
+                            plugin.logger.warn("Error checking vanish permissions for ${viewer.username} -> ${player.username}", e)
+                            false
+                        }
+                        
+                        if (canSee) {
+                            // Show player to viewer
+                            if (!player.viewers.contains(viewer)) {
+                                player.addViewer(viewer)
+
+                            }
+                        } else {
+                            // Hide player from viewer
+                            if (player.viewers.contains(viewer)) {
+                                player.removeViewer(viewer)
+
+                            }
+                        }
+                    }
                 }
-            }
-        } catch (e: Exception) {
-            plugin.logger.warn("Error updating visibility between ${viewer.username} and ${target.username}", e)
-        }
-    }
-    
-    /**
-     * Force refresh entity visibility between two specific players
-     */
-    private suspend fun refreshEntityVisibility(viewer: Player, target: Player) {
-        try {
-            val shouldSeeTarget = if (isPlayerVanished(target.uuid)) {
-                canSeeVanished(viewer, target.uuid)
-            } else {
-                true // Non-vanished players should always be visible
             }
             
-            if (shouldSeeTarget) {
-                // Ensure target is visible to viewer
-                if (!target.viewers.contains(viewer)) {
-                    target.addViewer(viewer)
-                }
-            } else {
-                // Ensure target is hidden from viewer
-                if (target.viewers.contains(viewer)) {
-                    target.removeViewer(viewer)
-                }
-            }
+
+            
         } catch (e: Exception) {
-            plugin.logger.warn("Error refreshing entity visibility between ${viewer.username} and ${target.username}", e)
+            plugin.logger.warn("Error updating player visibility for ${player.username}", e)
         }
     }
     
@@ -356,45 +223,91 @@ class VanishPluginMessageListener(private val plugin: LobbyPlugin) : EventListen
      * Check if a player is vanished
      */
     fun isPlayerVanished(playerUuid: UUID): Boolean {
-        return vanishedPlayers.containsKey(playerUuid)
+        return vanishData[playerUuid]?.vanished ?: false
+    }
+    
+    /**
+     * Check if a viewer can see a vanished player
+     */
+    suspend fun canSeeVanished(viewer: Player, vanishedPlayerUuid: UUID): Boolean {
+        return try {
+            plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, vanishedPlayerUuid).join()
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    /**
+     * Check if a viewer can see a vanished player (UUID version)
+     */
+    suspend fun canSeeVanished(viewerUuid: UUID, vanishedPlayerUuid: UUID): Boolean {
+        return try {
+            plugin.radiumIntegration.canSeeVanishedPlayer(viewerUuid, vanishedPlayerUuid).join()
+        } catch (e: Exception) {
+            false
+        }
     }
     
     /**
      * Get vanish data for a player
      */
     fun getVanishData(playerUuid: UUID): VanishData? {
-        return vanishedPlayers[playerUuid]
+        return vanishData[playerUuid]
     }
     
     /**
-     * Check if viewer can see vanished player
+     * Handle player join for vanish system
      */
-    suspend fun canSeeVanished(viewer: Player, vanishedPlayerUuid: UUID): Boolean {
-        val vanishData = getVanishData(vanishedPlayerUuid) ?: return true
+    fun handlePlayerJoin(player: Player) {
+        // Check if player is vanished and update visibility accordingly
+        updatePlayerVisibility(player)
+    }
+    
+    /**
+     * Start vanish enforcement task
+     */
+    fun startVanishEnforcementTask() {
+        val scheduler = MinecraftServer.getSchedulerManager()
         
-        try {
-            // Get viewer's permissions from Radium
-            val viewerData = plugin.radiumIntegration.getPlayerData(viewer.uuid).join()
-            val viewerPermissions = viewerData?.permissions?.toSet() ?: emptySet()
-            
-            return VanishLevel.canSeeVanished(viewerPermissions, vanishData.level)
-        } catch (e: Exception) {
-            plugin.logger.warn("Error checking vanish visibility for ${viewer.username}", e)
-            return false // Default to not showing vanished players on error
+        scheduler.submitTask {
+            // Periodic enforcement to ensure vanish states are maintained
+            try {
+                enforceVanishStates()
+            } catch (e: Exception) {
+                plugin.logger.warn("Error in vanish enforcement task", e)
+            }
+            TaskSchedule.tick(100) // Every 5 seconds
+        }
+        
+
+    }
+    
+    private fun enforceVanishStates() {
+        MinecraftServer.getConnectionManager().onlinePlayers.forEach { player ->
+            try {
+                updatePlayerVisibility(player)
+            } catch (e: Exception) {
+                plugin.logger.warn("Error enforcing vanish state for ${player.username}", e)
+            }
         }
     }
     
     /**
-     * Get all vanished players
+     * Clear all vanish data
      */
-    fun getVanishedPlayers(): Map<UUID, VanishData> {
-        return vanishedPlayers.toMap()
+    fun clear() {
+        vanishData.clear()
+
     }
     
     /**
-     * Clear all vanish data (for shutdown)
+     * Data class for vanish plugin messages
      */
-    fun clear() {
-        vanishedPlayers.clear()
-    }
+    private data class VanishMessage(
+        val action: String?,
+        val player: String?,
+        val playerName: String?,
+        val vanished: Boolean = false,
+        val level: Int = 0
+    )
 }

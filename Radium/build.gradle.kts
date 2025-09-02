@@ -3,26 +3,39 @@ import org.jetbrains.gradle.ext.taskTriggers
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
-    kotlin("kapt")
-    id("com.github.johnrengelman.shadow")
+    kotlin("jvm") version "2.0.20"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
     id("eclipse")
     id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.8"
     id("xyz.jpenilla.run-velocity") version "2.3.1"
 }
 
+repositories {
+    mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://jitpack.io")
+    maven("https://repo.codemc.org/repository/maven-public/")
+    maven("https://repo.dmulloy2.net/repository/public/")
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
+    maven("https://nexus.scarsz.me/content/groups/public/")
+    maven("https://repo.jpenilla.xyz/snapshots/")
+    maven("https://mvn.intellectualsites.com/content/groups/public/")
+}
+
 dependencies {
-    compileOnly("com.velocitypowered:velocity-api:${rootProject.extra["velocityVersion"]}")
-    kapt("com.velocitypowered:velocity-api:${rootProject.extra["velocityVersion"]}")
+    // Velocity API
+    compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
 
     // Kotlin Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:${rootProject.extra["coroutinesVersion"]}")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.8.1")
     implementation("com.github.shynixn.mccoroutine:mccoroutine-velocity-api:2.22.0")
     implementation("com.github.shynixn.mccoroutine:mccoroutine-velocity-core:2.22.0")
 
     // Lamp Command Library
-    implementation("io.github.revxrsal:lamp.common:${rootProject.extra["lampVersion"]}")
-    implementation("io.github.revxrsal:lamp.velocity:${rootProject.extra["lampVersion"]}")
-    implementation("io.github.revxrsal:lamp.brigadier:${rootProject.extra["lampVersion"]}")
+    implementation("io.github.revxrsal:lamp.common:4.0.0-rc.12")
+    implementation("io.github.revxrsal:lamp.velocity:4.0.0-rc.12")
+    implementation("io.github.revxrsal:lamp.brigadier:4.0.0-rc.12")
 
     implementation("org.yaml:snakeyaml:2.0")
 
@@ -30,24 +43,24 @@ dependencies {
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.10.2")
 
     // Redis Driver (Lettuce)
-    implementation("io.lettuce:lettuce-core:${rootProject.extra["redisVersion"]}")
+    implementation("io.lettuce:lettuce-core:6.3.2.RELEASE")
 
     // HTTP Client for API communication
-    implementation("com.squareup.okhttp3:okhttp:${rootProject.extra["okhttpVersion"]}")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-    // HTTP Server for API
-    implementation("io.ktor:ktor-server-core:2.3.12")
-    implementation("io.ktor:ktor-server-netty:2.3.12")
-    implementation("io.ktor:ktor-server-content-negotiation:2.3.12")
-    implementation("io.ktor:ktor-serialization-gson:2.3.12")
-    implementation("io.ktor:ktor-server-cors:2.3.12")
-    implementation("io.ktor:ktor-server-auth:2.3.12")
-    implementation("io.ktor:ktor-server-status-pages:2.3.12")
+    // HTTP Server for API - simplified versions
+    implementation("io.ktor:ktor-server-core:2.3.4")
+    implementation("io.ktor:ktor-server-netty:2.3.4")
+    implementation("io.ktor:ktor-server-content-negotiation:2.3.4")
+    implementation("io.ktor:ktor-serialization-gson:2.3.4")
+    implementation("io.ktor:ktor-server-cors:2.3.4")
+    implementation("io.ktor:ktor-server-auth:2.3.4")
+    implementation("io.ktor:ktor-server-status-pages:2.3.4")
 }
 
 tasks {
     runVelocity {
-        velocityVersion("${rootProject.extra["velocityVersion"]}")
+        velocityVersion("3.4.0-SNAPSHOT")
     }
     
     shadowJar {
@@ -82,4 +95,5 @@ val generateTemplates = tasks.register<Copy>("generateTemplates") {
     expand(props)
 }
 
+sourceSets.main.configure { java.srcDir(generateTemplates.map { it.outputs }) }
 sourceSets.main.configure { java.srcDir(generateTemplates.map { it.outputs }) }

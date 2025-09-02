@@ -24,31 +24,27 @@ class InventoryProtectionListener(private val plugin: LobbyPlugin, private val m
         } catch (e: Exception) {
             // If permission check fails, don't skip protection
         }
-        
+
         // Check if this is a player's inventory interaction
         if (event.inventory == null || event.inventory == player.inventory) {
-            // This is the player's own inventory - check if they're trying to move join items
+            val clickedItem = event.clickedItem
+            val slot = event.slot
+            
+            // Block direct manipulation of hub items 
             if (clickedItem != null && clickedItem.material() != Material.AIR) {
-                // Use material-based identification since component access is problematic
                 if (monitor.isJoinItemByMaterial(clickedItem.material())) {
-                    plugin.logger.debug("[InventoryProtection] Prevented ${player.username} from moving join item: ${clickedItem.material().name()}")
+                    // Block manipulation of hub items in InventoryPreClickEvent
                     return EventListener.Result.INVALID
                 }
             }
             
-            // ADDITIONAL CHECK: Handle number key swaps (1-9 keys)
-            // Check if they're trying to swap with a join item slot
-            if (event.slot >= 9) { // Only check inventory slots (not hotbar)
-                // Check all hotbar slots for join items and cancel if any exist
-                for (i in 0..8) {
-                    val hotbarItem = player.inventory.getItemStack(i)
-                    if (hotbarItem != null && hotbarItem.material() != Material.AIR) {
-                        // Use material-based identification since component access is problematic
-                        if (monitor.isJoinItemByMaterial(hotbarItem.material())) {
-                            // Found a join item in hotbar - cancel any inventory click that could swap with it
-                            plugin.logger.debug("[InventoryProtection] Prevented ${player.username} from swapping with join item slot")
-                            return EventListener.Result.INVALID
-                        }
+            // For hotbar slots with hub items, block any modifications
+            if (slot in 0..8) {
+                val itemInSlot = player.inventory.getItemStack(slot)
+                if (itemInSlot != null && itemInSlot.material() != Material.AIR) {
+                    if (monitor.isJoinItemByMaterial(itemInSlot.material())) {
+                        // Block any pre-click event on hub items
+                        return EventListener.Result.INVALID
                     }
                 }
             }

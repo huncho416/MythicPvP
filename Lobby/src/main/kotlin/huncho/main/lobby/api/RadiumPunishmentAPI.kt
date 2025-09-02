@@ -39,7 +39,7 @@ class RadiumPunishmentAPI(private val radiumApiUrl: String = "http://localhost:7
                 val requestBody = gson.toJson(request).toRequestBody(jsonMediaType)
                 
                 val httpRequest = Request.Builder()
-                    .url("$radiumApiUrl/api/punishments/issue")
+                    .url("$radiumApiUrl/api/v1/punishments/issue")
                     .post(requestBody)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
@@ -108,7 +108,7 @@ class RadiumPunishmentAPI(private val radiumApiUrl: String = "http://localhost:7
                 val requestBody = gson.toJson(request).toRequestBody(jsonMediaType)
                 
                 val httpRequest = Request.Builder()
-                    .url("$radiumApiUrl/api/punishments/revoke")
+                    .url("$radiumApiUrl/api/v1/punishments/revoke")
                     .post(requestBody)
                     .header("Content-Type", "application/json")
                     .build()
@@ -165,10 +165,10 @@ class RadiumPunishmentAPI(private val radiumApiUrl: String = "http://localhost:7
     suspend fun getActivePunishments(playerUuid: String): List<Punishment> {
         return withContext(Dispatchers.IO) {
             try {
-                logger.debug("Fetching punishments for player $playerUuid from $radiumApiUrl/api/punishments/player/$playerUuid")
+                logger.debug("Fetching punishments for player $playerUuid from $radiumApiUrl/api/v1/punishments/player/$playerUuid")
                 
                 val httpRequest = Request.Builder()
-                    .url("$radiumApiUrl/api/punishments/player/$playerUuid")
+                    .url("$radiumApiUrl/api/v1/punishments/player/$playerUuid")
                     .get()
                     .header("Accept", "application/json")
                     .build()

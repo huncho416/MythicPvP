@@ -52,6 +52,7 @@ import radium.backend.util.LettuceCache
 import radium.backend.util.MongoStream
 import radium.backend.api.RadiumApiServer
 import radium.backend.util.YamlFactory
+import radium.backend.util.*
 import radium.backend.punishment.PunishmentRepository
 import radium.backend.punishment.PunishmentManager
 import radium.backend.punishment.commands.Ban
@@ -84,6 +85,11 @@ class Radium @Inject constructor(
     val chatManager = ChatManager(this)
     val tabListManager = TabListManager(this)
     val networkVanishManager = NetworkVanishManager(this)
+
+    init {
+        // Set the radium instance for rank manager after it's created
+        rankManager.setRadiumInstance(this)
+    }
 
     // Punishment System - initialized after database connection
     lateinit var punishmentRepository: PunishmentRepository

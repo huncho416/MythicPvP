@@ -9,6 +9,7 @@ import revxrsal.commands.velocity.annotation.CommandPermission
 import radium.backend.Radium
 import radium.backend.annotations.OnlinePlayers
 import radium.backend.punishment.models.PunishmentType
+import radium.backend.util.DurationParser
 
 @Command("mute", "unmute")
 class Mute(private val radium: Radium) {
@@ -30,6 +31,34 @@ class Mute(private val radium: Radium) {
         if (target.isEmpty() || reason.isEmpty()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.mute.usage"))
             return
+        }
+
+        // Parse the reason to extract duration and actual reason
+        // Format can be: "<duration> <reason>" or just "<reason>" (permanent mute)
+        // Duration examples: "1h", "30m", "1d", "perm", "permanent"
+        val parts = reason.split(" ", limit = 2)
+        val firstPart = parts.getOrNull(0) ?: ""
+        val secondPart = parts.getOrNull(1)
+        
+        val finalDuration: Long?
+        val finalReason: String
+        
+        when {
+            firstPart.equals("perm", ignoreCase = true) || firstPart.equals("permanent", ignoreCase = true) -> {
+                // Permanent mute
+                finalDuration = null
+                finalReason = secondPart ?: "No reason provided"
+            }
+            firstPart.matches(Regex("\\d+[smhdwy]")) -> {
+                // Valid duration format
+                finalDuration = DurationParser.parseToMillis(firstPart)
+                finalReason = secondPart ?: "No reason provided"
+            }
+            else -> {
+                // No duration specified - treat entire input as reason and make it permanent
+                finalDuration = null
+                finalReason = reason
+            }
         }
 
         if (silent && !actor.hasPermission("radium.punish.silent")) {
@@ -76,27 +105,43 @@ class Mute(private val radium: Radium) {
                     targetName = targetName,
                     targetIp = targetIp,
                     type = PunishmentType.MUTE,
-                    reason = reason,
+                    reason = finalReason,
                     staff = actor,
-                    duration = null,
+                    duration = finalDuration?.toString(),
                     silent = silent,
                     clearInventory = false
                 )
 
                 if (success) {
+                    // Send appropriate success message based on duration
+                    val messageKey = if (finalDuration == null) {
+                        "punishments.mute.success_permanent"
+                    } else {
+                        "punishments.mute.success_temporary"
+                    }
+                    
                     actor.sendMessage(
                         radium.yamlFactory.getMessageComponent(
-                            "punishments.mute_issued_permanent",
-                            "player" to targetName,
-                            "reason" to reason
+                            messageKey,
+                            "target" to targetName,
+                            "reason" to finalReason,
+                            "duration" to (finalDuration?.let { "${it}ms" } ?: "permanent")
                         )
                     )
 
                     // Notify the muted player if online
                     targetPlayer?.let { player ->
+                        val muteMessageKey = if (finalDuration == null) {
+                            "punishments.player.muted_permanent"
+                        } else {
+                            "punishments.player.muted"
+                        }
+                        
                         val muteMessage = radium.yamlFactory.getMessageComponent(
-                            "punishments.player.muted_permanent",
-                            "reason" to reason
+                            muteMessageKey,
+                            "reason" to finalReason,
+                            "staff" to actor.username,
+                            "duration" to (finalDuration?.let { "${it}ms" } ?: "permanent")
                         )
                         player.sendMessage(muteMessage)
                     }
@@ -106,6 +151,20 @@ class Mute(private val radium: Radium) {
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.error_occurred"))
             }
         }
+    }
+
+    @Command("mute <target> <duration> <reason>")
+    @CommandPermission("radium.punish.mute")
+    fun muteWithDuration(
+        actor: Player,
+        @OnlinePlayers target: String,
+        duration: String,
+        reason: String,
+        @Flag("s") silent: Boolean = false
+    ) {
+        // Combine duration and reason and call the main mute function
+        val combinedReason = "$duration $reason"
+        mute(actor, target, combinedReason, silent)
     }
 
     @Command("unmute <target> <reason>")
@@ -158,8 +217,8 @@ class Mute(private val radium: Radium) {
                 if (success) {
                     actor.sendMessage(
                         radium.yamlFactory.getMessageComponent(
-                            "punishments.unmute_success",
-                            "player" to profile.username,
+                            "punishments.unmute.success",
+                            "target" to profile.username,
                             "reason" to reason
                         )
                     )

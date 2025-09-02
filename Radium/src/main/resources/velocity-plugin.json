@@ -1,0 +1,9 @@
+{
+  "id": "radium",
+  "name": "Radium",
+  "version": "1.0-SNAPSHOT",
+  "description": "Advanced network management plugin for Velocity proxy",
+  "authors": ["MythicPvP Team"],
+  "main": "radium.backend.Radium",
+  "dependencies": []
+}

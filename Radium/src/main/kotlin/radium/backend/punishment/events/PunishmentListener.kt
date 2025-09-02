@@ -9,6 +9,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import radium.backend.Radium
 import radium.backend.punishment.models.PunishmentType
+import radium.backend.util.DurationParser
 
 /**
  * Event listener for punishment enforcement
@@ -135,9 +136,11 @@ class PunishmentListener(private val radium: Radium) {
 
                         // Send mute notification to player
                         val muteMessage = if (mutePunishment.expiresAt != null) {
+                            val timeLeft = java.time.Duration.between(java.time.Instant.now(), mutePunishment.expiresAt)
+                            val formattedTime = DurationParser.format(timeLeft)
                             radium.yamlFactory.getMessageComponent(
                                 "punishments.player.chat_blocked_temporary",
-                                "expires" to mutePunishment.expiresAt.toString(),
+                                "time" to formattedTime,
                                 "reason" to mutePunishment.reason
                             )
                         } else {
