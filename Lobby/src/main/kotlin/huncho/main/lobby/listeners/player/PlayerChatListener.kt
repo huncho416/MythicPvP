@@ -73,7 +73,7 @@ class PlayerChatListener(private val plugin: LobbyPlugin) : EventListener<Player
                     // Broadcast the formatted message to all players
                     val finalMessage = MessageUtils.colorize(formattedMessage)
                     MinecraftServer.getConnectionManager().onlinePlayers.forEach { onlinePlayer ->
-                        onlinePlayer.sendMessage(finalMessage)
+                        onlinePlayer.sendMessage(finalMessage as net.kyori.adventure.text.Component)
                     }
                 } else {
                     // Fallback to default formatting

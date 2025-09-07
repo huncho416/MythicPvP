@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+import radium.backend.util.ColorUtil
 
 class YamlFactory {
     private val langConfig = mutableMapOf<String, Any>()
@@ -179,13 +180,15 @@ class YamlFactory {
     }
 
     /**
-     * Converts legacy color codes to Adventure Component
-     * @param text Text with & or § color codes
-     * @return Adventure Component with proper formatting
+     * Converts legacy and hex color codes to proper format
+     * @param text Text with &, §, or hex color codes
+     * @return Processed text with proper color formatting
      */
     private fun translateColorCodes(text: String): String {
-        // This version still returns a string, but now it's the legacy format which is properly recognized
-        return text.replace('&', '§')
+        // Use ColorUtil for comprehensive color support including hex
+        val component = ColorUtil.parseColoredText(text)
+        // Convert back to legacy format for compatibility
+        return LegacyComponentSerializer.legacySection().serialize(component)
     }
 
     /**
@@ -201,11 +204,11 @@ class YamlFactory {
         // If the message is the same as the key, it means it wasn't found
         if (legacyText == key) {
             // Return a fallback component
-            return LegacyComponentSerializer.legacySection().deserialize("§cMessage key not found: $key")
+            return ColorUtil.parseColoredText("§cMessage key not found: $key")
         }
 
-        // Convert to component using LegacyComponentSerializer
-        return LegacyComponentSerializer.legacySection().deserialize(legacyText)
+        // Use ColorUtil for comprehensive color support including hex
+        return ColorUtil.parseColoredText(legacyText)
     }
 
     /**

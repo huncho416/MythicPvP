@@ -1,47 +1,53 @@
 # Radium Plugin Language Configuration
+# Supports both legacy color codes (&a, &c) and hex colors (&#FF5555, #00AAAA)
+
+# Color Examples:
+# Legacy: &c (red), &a (green), &9 (blue)
+# Hex: &#FF5555 (red), &#55FF55 (green), &#5555FF (blue)
+# Simple Hex: #FF5555 (red), #55FF55 (green), #5555FF (blue)
 
 # Rank command messages
 rank:
-  header: "&e&l--- Rank Management ---"
+  header: "&#FFAA00&l--- Rank Management ---"
   usage:
-    main: "&e/rank &7- Show rank management commands"
-    create: "&e/rank create <name> &7- Create a new rank"
-    delete: "&e/rank delete <name> &7- Delete a rank"
-    setprefix: "&e/rank setprefix <rank> <prefix> &7- Set rank prefix"
-    setsuffix: "&e/rank setsuffix <rank> <suffix> &7- Set rank suffix"
-    settabprefix: "&e/rank settabprefix <rank> <prefix> &7- Set tab prefix"
-    settabsuffix: "&e/rank settabsuffix <rank> <suffix> &7- Set tab suffix"
-    setweight: "&e/rank setweight <rank> <weight> &7- Set rank weight"
-    permission_add: "&e/rank permission add <rank> <permission> &7- Add permission"
-    permission_remove: "&e/rank permission remove <rank> <permission> &7- Remove permission"
-    inherit: "&e/rank inherit <rank> <inherit_rank> &7- Add inheritance"
-    info: "&e/rank info <rank> &7- View rank information"
-    list_usage: "&e/rank list &7- List all ranks"
+    main: "&#FFAA00/rank &#CCCCCC- Show rank management commands"
+    create: "&#FFAA00/rank create <name> &#CCCCCC- Create a new rank"
+    delete: "&#FFAA00/rank delete <name> &#CCCCCC- Delete a rank"
+    setprefix: "&#FFAA00/rank setprefix <rank> <prefix> &#CCCCCC- Set rank prefix"
+    setsuffix: "&#FFAA00/rank setsuffix <rank> <suffix> &#CCCCCC- Set rank suffix"
+    settabprefix: "&#FFAA00/rank settabprefix <rank> <prefix> &#CCCCCC- Set tab prefix"
+    settabsuffix: "&#FFAA00/rank settabsuffix <rank> <suffix> &#CCCCCC- Set tab suffix"
+    setweight: "&#FFAA00/rank setweight <rank> <weight> &#CCCCCC- Set rank weight"
+    permission_add: "&#FFAA00/rank permission add <rank> <permission> &#CCCCCC- Add permission"
+    permission_remove: "&#FFAA00/rank permission remove <rank> <permission> &#CCCCCC- Remove permission"
+    inherit: "&#FFAA00/rank inherit <rank> <inherit_rank> &#CCCCCC- Add inheritance"
+    info: "&#FFAA00/rank info <rank> &#CCCCCC- View rank information"
+    list_usage: "&#FFAA00/rank list &#CCCCCC- List all ranks"
   create:
-    usage: "&cUsage: /rank create <name>"
-    success: "&aCreated rank '{rank}' successfully!"
-    already_exists: "&cRank '{rank}' already exists!"
+    usage: "&#FF5555Usage: /rank create <name>"
+    success: "&#55FF55Created rank '&#FFAA00{rank}&#55FF55' successfully!"
+    already_exists: "&#FF5555Rank '&#FFAA00{rank}&#FF5555' already exists!"
   delete:
-    usage: "&cUsage: /rank delete <name>"
-    success: "&aDeleted rank '{rank}' successfully!"
-    not_found: "&cRank '{rank}' not found!"
+    usage: "&#FF5555Usage: /rank delete <name>"
+    success: "&#55FF55Deleted rank '&#FFAA00{rank}&#55FF55' successfully!"
+    not_found: "&#FF5555Rank '&#FFAA00{rank}&#FF5555' not found!"
   setprefix:
-    usage: "&cUsage: /rank setprefix <rank> <prefix>"
-    success: "&aSet prefix for rank '{rank}' to '{prefix}'"
+    usage: "&#FF5555Usage: /rank setprefix <rank> <prefix>"
+    success: "&#55FF55Set prefix for rank '&#FFAA00{rank}&#55FF55' to '&#FFFFFF{prefix}&#55FF55'"
   setsuffix:
-    usage: "&cUsage: /rank setsuffix <rank> <suffix>"
-    success: "&aSet suffix for rank '{rank}' to '{suffix}'"
+    usage: "&#FF5555Usage: /rank setsuffix <rank> <suffix>"
+    success: "&#55FF55Set suffix for rank '&#FFAA00{rank}&#55FF55' to '&#FFFFFF{suffix}&#55FF55'"
   settabprefix:
-    usage: "&cUsage: /rank settabprefix <rank> <prefix>"
-    success: "&aSet tab prefix for rank '{rank}' to '{prefix}'"
+    usage: "&#FF5555Usage: /rank settabprefix <rank> <prefix>"
+    success: "&#55FF55Set tab prefix for rank '&#FFAA00{rank}&#55FF55' to '&#FFFFFF{prefix}&#55FF55'"
   settabsuffix:
-    usage: "&cUsage: /rank settabsuffix <rank> <suffix>"
-    success: "&aSet tab suffix for rank '{rank}' to '{suffix}'"
+    usage: "&#FF5555Usage: /rank settabsuffix <rank> <suffix>"
+    success: "&#55FF55Set tab suffix for rank '&#FFAA00{rank}&#55FF55' to '&#FFFFFF{suffix}&#55FF55'"
   setcolor:
     usage: "&cUsage: /rank setcolor <rank> <color>"
     success: "&aSet color for rank '{rank}' to '{color}'"
     invalid_color: "&cInvalid color '{color}'!"
-    valid_colors: "&eValid colors: &4dark_red &c&lred &6gold &e&lyellow &2dark_green &a&lgreen &b&laqua &3dark_aqua &1dark_blue &9&lblue &5dark_purple &d&lmagenta &f&lwhite &7gray &8dark_gray &0&lblack"
+    valid_colors: "&eValid colors:\n&#FF5555&lHex Colors: &#FF5555, &#55FF55, &#5555FF, etc.\n&eLegacy: &4dark_red &c&lred &6gold &e&lyellow &2dark_green &a&lgreen &b&laqua &3dark_aqua &1dark_blue &9&lblue &5dark_purple &d&lmagenta &f&lwhite &7gray &8dark_gray &0&lblack"
   setweight:
     usage: "&cUsage: /rank setweight <rank> <weight>"
     success: "&aSet weight for rank '{rank}' to {weight}"

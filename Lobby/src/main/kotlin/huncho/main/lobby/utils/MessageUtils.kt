@@ -46,28 +46,18 @@ object MessageUtils {
     /**
      * Cleans corrupted color codes that may come from database UTF-8 encoding issues
      * Fixes corruption where & becomes ∩┐╜ and other encoding problems
+     * Now supports hex colors
      */
     fun cleanColorCodes(text: String): String {
-        if (text.isBlank()) return text
-        
-        return text
-            .replace("∩┐╜", "&")     // Fix UTF-8 corruption of &
-            .replace("§", "&")      // Normalize section signs to ampersand
-            .replace("∩", "&")      // Additional corruption patterns
-            .replace("┐", "")       // Remove stray corruption characters
-            .replace("╜", "")       // Remove stray corruption characters
-            .replace("Â", "")       // Remove UTF-8 BOM corruption
-            .replace("âž§", "&")    // Another corruption pattern
-            .replace(Regex("&([^0-9a-fk-orA-FK-OR])"), "")  // Remove invalid codes
-            .replace(Regex("&{2,}"), "&")  // Replace multiple & with single &
+        return LobbyColorUtil.cleanColorCodes(text)
     }
 
     /**
-     * Colorize a string using legacy color codes (&) with corruption cleaning
+     * Colorize text using both legacy and hex color codes
+     * Supports &#RRGGBB, #RRGGBB, and legacy &a formats
      */
     fun colorize(text: String): Component {
-        val cleanText = cleanColorCodes(text)
-        return legacySerializer.deserialize(cleanText)
+        return LobbyColorUtil.parseColoredText(text)
     }
     
     /**
@@ -200,4 +190,23 @@ object MessageUtils {
     fun componentToString(component: Component): String {
         return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(component)
     }
+}
+
+/**
+ * Extension functions for Player to maintain backward compatibility
+ */
+fun Player.sendMessage(message: String) {
+    MessageUtils.sendMessage(this, message)
+}
+
+fun Player.sendMessage(message: String, prefix: String) {
+    MessageUtils.sendMessage(this, message, prefix)
+}
+
+fun Player.colorize(text: String): Component {
+    return MessageUtils.colorize(text)
+}
+
+fun colorize(text: String): Component {
+    return MessageUtils.colorize(text)
 }

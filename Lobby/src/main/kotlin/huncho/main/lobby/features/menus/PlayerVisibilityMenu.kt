@@ -20,40 +20,40 @@ class PlayerVisibilityMenu(private val plugin: LobbyPlugin) {
         // All players option
         val allItem = ItemStack.builder(Material.LIME_DYE)
             .customName(MessageUtils.colorize("&aShow All Players"))
-            .lore(listOf(
+            .lore(
                 MessageUtils.colorize("&7Show all players in the lobby"),
                 MessageUtils.colorize(""),
                 if (currentMode == VisibilityMode.ALL) 
                     MessageUtils.colorize("&a✓ Currently selected") 
                 else 
                     MessageUtils.colorize("&eClick to select")
-            ))
+            )
             .build()
         
         // Staff only option
         val staffItem = ItemStack.builder(Material.YELLOW_DYE)
             .customName(MessageUtils.colorize("&eShow Staff Only"))
-            .lore(listOf(
+            .lore(
                 MessageUtils.colorize("&7Show only staff members"),
                 MessageUtils.colorize(""),
                 if (currentMode == VisibilityMode.STAFF) 
                     MessageUtils.colorize("&a✓ Currently selected") 
                 else 
                     MessageUtils.colorize("&eClick to select")
-            ))
+            )
             .build()
         
         // Hide all option
         val hideItem = ItemStack.builder(Material.RED_DYE)
             .customName(MessageUtils.colorize("&cHide All Players"))
-            .lore(listOf(
+            .lore(
                 MessageUtils.colorize("&7Hide all players from view"),
                 MessageUtils.colorize(""),
                 if (currentMode == VisibilityMode.NONE) 
                     MessageUtils.colorize("&a✓ Currently selected") 
                 else 
                     MessageUtils.colorize("&eClick to select")
-            ))
+            )
             .build()
         
         inventory.setItemStack(2, allItem)

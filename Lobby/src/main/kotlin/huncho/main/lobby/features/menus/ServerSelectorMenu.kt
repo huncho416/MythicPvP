@@ -50,7 +50,7 @@ class ServerSelectorMenu(private val plugin: LobbyPlugin) {
             
             val item = ItemStack.builder(material)
                 .customName(MessageUtils.colorize(name))
-                .lore(lore.map { MessageUtils.colorize(processServerPlaceholders(it, serverName)) })
+                .lore(*lore.map { MessageUtils.colorize(processServerPlaceholders(it, serverName)) }.toTypedArray())
                 .build()
             
             inventory.setItemStack(slot, item)

@@ -32,66 +32,39 @@ class TabListManager(private val radium: Radium) {
         /**
          * Cleans corrupted color codes and normalizes them to ampersand format
          * CRITICAL: Fixes UTF-8 corruption where & becomes ∩┐╜ and other encoding issues
+         * Now supports hex colors
          */
         fun cleanColorCodes(text: String?): String {
-            if (text.isNullOrBlank()) return ""
-            
-            return text
-                .replace("∩┐╜", "&")     // Fix UTF-8 corruption of &
-                .replace("§", "&")      // Normalize section signs to ampersand
-                .replace("∩", "&")      // Additional corruption patterns
-                .replace("┐", "")       // Remove stray corruption characters
-                .replace("╜", "")       // Remove stray corruption characters
-                .replace("Â", "")       // Remove UTF-8 BOM corruption
-                .replace("âž§", "&")    // Another corruption pattern
-                .replace(Regex("&([^0-9a-fk-orA-FK-OR])"), "")  // Remove invalid codes
-                .replace(Regex("&{2,}"), "&")  // Replace multiple & with single &
+            return ColorUtil.cleanColorCodes(text)
         }
         
         /**
          * Safely parses color codes and creates a Component
          * CRITICAL: Handle all possible corrupted encoding scenarios
+         * Now supports both legacy and hex colors
          */
         fun safeParseColoredText(text: String?): Component {
-            if (text.isNullOrBlank()) return Component.empty()
-            
-            return try {
-                // Clean the text aggressively before parsing
-                val cleanText = cleanColorCodes(text)
-                
-                LegacyComponentSerializer.legacyAmpersand().deserialize(cleanText)
-            } catch (e: Exception) {
-                // Ultimate fallback: strip all formatting and return white text
-                val plainText = text.replace(Regex("[&§∩┐╜âž][0-9a-fk-orA-FK-OR]?"), "")
-                    .replace(Regex("[∩┐╜âž]"), "")
-                Component.text(plainText, NamedTextColor.WHITE)
-            }
+            return ColorUtil.parseColoredText(text)
         }
     }
 
     /**
-     * Converts legacy color codes to Adventure Components safely
+     * Converts legacy and hex color codes to Adventure Components safely
      * CRITICAL FIX: Handle corrupted UTF-8 characters that replace & with ∩┐╜
+     * Now supports hex colors like &#FF5555
      */
     private fun parseColoredText(text: String): Component {
         return if (text.isBlank()) {
             Component.empty()
         } else {
             try {
-                // CRITICAL: Fix corrupted UTF-8 characters first
-                val cleanText = text
-                    .replace("∩┐╜", "&")  // Fix corrupted UTF-8 encoding of &
-                    .replace("§", "&")   // Normalize section signs to &
-                    .replace(Regex("&([^0-9a-fk-orA-FK-OR])"), "") // Remove invalid color codes
-                
-                radium.logger.debug("Parsing colored text: '$text' -> '$cleanText'")
-                
-                // Use legacy serializer with & codes (ampersand)
-                LegacyComponentSerializer.legacyAmpersand().deserialize(cleanText)
+                radium.logger.debug("Parsing colored text: '$text'")
+                // Use ColorUtil for comprehensive color support
+                ColorUtil.parseColoredText(text)
             } catch (e: Exception) {
                 radium.logger.warn("Failed to parse colored text '$text': ${e.message}")
                 // Fallback: strip all formatting and return plain white text
-                val plainText = text.replace(Regex("[&§∩┐╜][0-9a-fk-orA-FK-OR]?"), "")
+                val plainText = ColorUtil.stripColor(text)
                 Component.text(plainText, NamedTextColor.WHITE)
             }
         }

@@ -202,38 +202,38 @@ All hub commands require their respective permissions:
 ### OWNER Rank
 - **Permissions:** `radium.*` (all permissions)
 - **Weight:** 1000
-- **Prefix:** `&4[OWNER] &c`
-- **Color:** `&f` (white)
+- **Prefix:** `&#FF4444[OWNER] &#FFAAAA` (hex red gradient)
+- **Color:** `&#FFFFFF` (hex white)
 
 ### ADMIN Rank  
 - **Permissions:** `radium.admin.*`
 - **Weight:** 900
-- **Prefix:** `&c[ADMIN] &c`
-- **Color:** `&c` (red)
+- **Prefix:** `&#FF5555[ADMIN] &#FF7777` (hex red gradient)
+- **Color:** `&#FF5555` (hex red)
 
 ### MOD Rank
 - **Permissions:** `radium.mod.*`
 - **Weight:** 800
-- **Prefix:** `&9[MOD] &9`
-- **Color:** `&9` (blue)
+- **Prefix:** `&#5555FF[MOD] &#7777FF` (hex blue gradient)
+- **Color:** `&#5555FF` (hex blue)
 
 ### HELPER Rank
 - **Permissions:** `radium.helper.*`
 - **Weight:** 700
-- **Prefix:** `&a[HELPER] &a`
-- **Color:** `&a` (green)
+- **Prefix:** `&#55FF55[HELPER] &#77FF77` (hex green gradient)
+- **Color:** `&#55FF55` (hex green)
 
 ### VIP Rank
 - **Permissions:** `radium.vip.*`
 - **Weight:** 100
-- **Prefix:** `&6[VIP] &6`
-- **Color:** `&6` (gold)
+- **Prefix:** `&#FFAA00[VIP] &#FFCC55` (hex gold gradient)
+- **Color:** `&#FFAA00` (hex gold)
 
 ### DEFAULT Rank
 - **Permissions:** None (empty list)
 - **Weight:** 0
 - **Prefix:** None
-- **Color:** `&f` (white)
+- **Color:** `&#FFFFFF` (hex white)
 
 ---
 
@@ -268,6 +268,25 @@ These permissions are for Velocity proxy administration:
 ---
 
 ## Important Notes
+
+### Color Code Support
+MythicPvP supports both legacy and modern color codes across all messages, ranks, and commands:
+
+#### Legacy Color Codes
+- `&0` - `&f` - Standard Minecraft color codes (black to white)
+- `&k` - `&r` - Formatting codes (obfuscated, reset, etc.)
+- Examples: `&c` (red), `&a` (green), `&9` (blue), `&e` (yellow)
+
+#### Hex Color Codes
+- `&#RRGGBB` - Full hex color support (e.g., `&#FF5555` for red)
+- `#RRGGBB` - Simple hex format (e.g., `#55FF55` for green)
+- Examples: `&#FF0000` (red), `&#00FF00` (green), `&#0000FF` (blue)
+
+#### Mixed Usage
+You can mix legacy and hex colors in the same message:
+- `&c[STAFF] &#FF5555PlayerName` - Legacy red prefix with hex red name
+- `&#FFAA00Rank: &aOnline` - Hex orange with legacy green
+- `&#FF5555&lBOLD &#CCCCCC&oItalic` - Hex colors with legacy formatting
 
 ### Wildcard Permissions
 - `*` - All permissions (use with caution)
