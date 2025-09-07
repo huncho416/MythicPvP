@@ -137,12 +137,22 @@ class Mute(private val radium: Radium) {
                             "punishments.player.muted"
                         }
                         
-                        val muteMessage = radium.yamlFactory.getMessageComponent(
-                            muteMessageKey,
-                            "reason" to finalReason,
-                            "staff" to actor.username,
-                            "duration" to (finalDuration?.let { "${it}ms" } ?: "permanent")
-                        )
+                        val muteMessage = if (finalDuration == null) {
+                            radium.yamlFactory.getMessageComponent(
+                                muteMessageKey,
+                                "reason" to finalReason,
+                                "staff" to actor.username
+                            )
+                        } else {
+                            val expiresAt = java.time.Instant.now().plusMillis(finalDuration)
+                            radium.yamlFactory.getMessageComponent(
+                                muteMessageKey,
+                                "reason" to finalReason,
+                                "staff" to actor.username,
+                                "duration" to formatDuration(finalDuration),
+                                "expires" to expiresAt.toString()
+                            )
+                        }
                         player.sendMessage(muteMessage)
                     }
                 }
@@ -258,5 +268,22 @@ class Mute(private val radium: Radium) {
 
     private fun isDurationString(str: String): Boolean {
         return str.matches(Regex("^\\d+[smhdwy]|perm|permanent$", RegexOption.IGNORE_CASE))
+    }
+
+    /**
+     * Format duration from milliseconds to human readable string
+     */
+    private fun formatDuration(millis: Long): String {
+        val seconds = millis / 1000
+        val minutes = seconds / 60
+        val hours = minutes / 60
+        val days = hours / 24
+
+        return when {
+            days > 0 -> "${days}d ${hours % 24}h"
+            hours > 0 -> "${hours}h ${minutes % 60}m"
+            minutes > 0 -> "${minutes}m ${seconds % 60}s"
+            else -> "${seconds}s"
+        }
     }
 }

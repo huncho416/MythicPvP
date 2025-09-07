@@ -1,91 +1,49 @@
-# Gradle
-.gradle/
+# Build artifacts
 build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+*/build/
+bin/
+*/bin/
 
-# IntelliJ IDEA
+# IDE files
 .idea/
-*.iws
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-# Eclipse
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-# NetBeans
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-# VS Code
+*.iws
 .vscode/
 
-# Mac
-.DS_Store
+# Gradle
+.gradle/
+gradle-app.setting
 
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Package Files
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs
-hs_err_pid*
-
-# Minecraft server files
-*.log
+# Runtime logs
 logs/
-crash-reports/
-world/
-world_nether/
-world_the_end/
-banned-ips.json
-banned-players.json
-ops.json
-usercache.json
-usernamecache.json
-whitelist.json
-server.properties
-eula.txt
-
-# Velocity/Minestom runtime
-run/logs/
-run/plugins/*.jar
-*.pid
-
-# Sensitive files
-forwarding.secret
+*.log
 
 # Temporary files
 *.tmp
-*.bak
-*.swp
-*.swo
-*~
+*.temp
+.cache/
 
-# Dependencies
-node_modules/
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Runtime configuration (should be configured per deployment)
+run/
+*/run/
+config/lobby/*.yml
+!config/lobby/config.yml.example
+
+# Secrets and sensitive data
+*.secret
+forwarding.secret
+velocity.toml
+!velocity.toml.example
+
+# Database files
+*.db
+*.sqlite
+
+# JAR files (except dependencies)
+*.jar
+!gradle/wrapper/gradle-wrapper.jar

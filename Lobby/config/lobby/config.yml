@@ -176,6 +176,15 @@ protection:
   anti_chat: false  # Allow default players to chat if they have permission
   inventory_move: true  # Prevent inventory interactions
 
+# Reports and Requests system configuration
+reports:
+  cooldown_seconds: 300  # 5 minutes between reports
+  max_per_player: 5      # Maximum active reports per player
+  
+requests:
+  cooldown_seconds: 60   # 1 minute between requests
+  max_per_player: 3      # Maximum active requests per player
+
 features:
   double_jump: true
   launch_pads: true

@@ -33,6 +33,7 @@ class PunishmentListener(private val radium: Radium) {
                             PunishmentType.BLACKLIST -> {
                                 radium.yamlFactory.getMessageComponent(
                                     "punishments.player.blacklisted",
+                                    "staff" to (ipPunishment.issuedByName ?: "Console"),
                                     "reason" to ipPunishment.reason
                                 )
                             }
@@ -40,12 +41,14 @@ class PunishmentListener(private val radium: Radium) {
                                 if (ipPunishment.expiresAt != null) {
                                     radium.yamlFactory.getMessageComponent(
                                         "punishments.player.banned",
+                                        "staff" to (ipPunishment.issuedByName ?: "Console"),
                                         "expires" to ipPunishment.expiresAt.toString(),
                                         "reason" to ipPunishment.reason
                                     )
                                 } else {
                                     radium.yamlFactory.getMessageComponent(
                                         "punishments.player.banned_permanent",
+                                        "staff" to (ipPunishment.issuedByName ?: "Console"),
                                         "reason" to ipPunishment.reason
                                     )
                                 }
@@ -71,6 +74,7 @@ class PunishmentListener(private val radium: Radium) {
                             PunishmentType.BLACKLIST -> {
                                 radium.yamlFactory.getMessageComponent(
                                     "punishments.player.blacklisted",
+                                    "staff" to (playerPunishment.issuedByName ?: "Console"),
                                     "reason" to playerPunishment.reason
                                 )
                             }
@@ -78,12 +82,14 @@ class PunishmentListener(private val radium: Radium) {
                                 if (playerPunishment.expiresAt != null) {
                                     radium.yamlFactory.getMessageComponent(
                                         "punishments.player.banned",
+                                        "staff" to (playerPunishment.issuedByName ?: "Console"),
                                         "expires" to playerPunishment.expiresAt.toString(),
                                         "reason" to playerPunishment.reason
                                     )
                                 } else {
                                     radium.yamlFactory.getMessageComponent(
                                         "punishments.player.banned_permanent",
+                                        "staff" to (playerPunishment.issuedByName ?: "Console"),
                                         "reason" to playerPunishment.reason
                                     )
                                 }
@@ -100,6 +106,22 @@ class PunishmentListener(private val radium: Radium) {
                                 .color(NamedTextColor.YELLOW)
                         )
                         return@runBlocking
+                    }
+
+                    // Check for ban evasion (only if player is not banned themselves)
+                    try {
+                        val banEvasionResult = radium.banEvasionManager.checkBanEvasion(
+                            player.uniqueId, 
+                            player.username, 
+                            playerIp
+                        )
+                        
+                        if (banEvasionResult != null) {
+                            // Alert staff about potential ban evasion
+                            radium.banEvasionManager.alertStaff(banEvasionResult)
+                        }
+                    } catch (e: Exception) {
+                        radium.logger.warn("Error checking ban evasion for ${player.username}: ${e.message}")
                     }
 
                     // Only log for staff members
@@ -137,10 +159,14 @@ class PunishmentListener(private val radium: Radium) {
                         // Send mute notification to player
                         val muteMessage = if (mutePunishment.expiresAt != null) {
                             val timeLeft = java.time.Duration.between(java.time.Instant.now(), mutePunishment.expiresAt)
-                            val formattedTime = DurationParser.format(timeLeft)
+                            val formattedDuration = DurationParser.format(timeLeft)
+                            val formattedExpires = java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy 'at' hh:mm a")
+                                .withZone(java.time.ZoneId.systemDefault())
+                                .format(mutePunishment.expiresAt)
                             radium.yamlFactory.getMessageComponent(
                                 "punishments.player.chat_blocked_temporary",
-                                "time" to formattedTime,
+                                "duration" to formattedDuration,
+                                "expires" to formattedExpires,
                                 "reason" to mutePunishment.reason
                             )
                         } else {

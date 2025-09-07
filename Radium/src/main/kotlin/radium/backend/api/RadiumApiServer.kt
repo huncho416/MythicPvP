@@ -97,7 +97,7 @@ class RadiumApiServer(
             }
         }.start(wait = false)
 
-        logger.info("Radium API server started on port $port")
+        // API server started
     }
 
     private fun Route.setupApiRoutes() {
@@ -121,6 +121,15 @@ class RadiumApiServer(
 
         // Punishment routes
         punishmentRoutes(plugin, server, logger)
+        
+        // Reports routes
+        reportsRoutes(plugin, logger)
+        
+        // Minecraft-Heads routes
+        headsRoutes(plugin, logger)
+        
+        // Chat routes
+        chatRoutes(plugin, logger)
     }
 
     fun stop() {

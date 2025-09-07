@@ -13,9 +13,11 @@ import huncho.main.lobby.features.spawn.SpawnManager
 import huncho.main.lobby.features.protection.ProtectionManager
 import huncho.main.lobby.features.world.WorldLightingManager
 import huncho.main.lobby.features.tablist.TabListManager
+import huncho.main.lobby.features.nametags.NametagManager
 import huncho.main.lobby.features.vanish.VanishStatusMonitor
 import huncho.main.lobby.features.vanish.VanishEventListener
 import huncho.main.lobby.features.vanish.PacketVanishManager
+import huncho.main.lobby.features.reports.ReportsManager
 import huncho.main.lobby.listeners.VanishPluginMessageListener
 import huncho.main.lobby.listeners.GamemodePluginMessageListener
 import huncho.main.lobby.managers.SchematicManager
@@ -65,15 +67,25 @@ object LobbyPlugin {
     lateinit var protectionManager: ProtectionManager
     lateinit var worldLightingManager: WorldLightingManager
     lateinit var tabListManager: TabListManager
+    lateinit var nametagManager: NametagManager
     lateinit var vanishStatusMonitor: VanishStatusMonitor
     lateinit var vanishEventListener: VanishEventListener
     lateinit var vanishPluginMessageListener: VanishPluginMessageListener
     lateinit var gamemodePluginMessageListener: GamemodePluginMessageListener
     lateinit var packetVanishManager: PacketVanishManager
     lateinit var schematicManager: SchematicManager
+    lateinit var reportsManager: ReportsManager
+    
+    // New Feature Managers
+    lateinit var freezeManager: huncho.main.lobby.features.freeze.FreezeManager
+    lateinit var panicManager: huncho.main.lobby.features.panic.PanicManager
+    lateinit var creditsManager: huncho.main.lobby.features.credits.CreditsManager
+    lateinit var adminCommandManager: huncho.main.lobby.features.admin.AdminCommandManager
+    lateinit var staffModeManager: huncho.main.lobby.features.staffmode.StaffModeManager
     
     // Integration
     lateinit var radiumIntegration: RadiumIntegration
+    lateinit var headsIntegration: huncho.main.lobby.integration.HeadsIntegration
     
     // Redis Integration
     var redisManager: RedisManager? = null
@@ -85,10 +97,10 @@ object LobbyPlugin {
     lateinit var lobbyInstance: InstanceContainer
     
     // Coroutine scope for async operations
-    private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     fun initialize() {
-        logger.info("Initializing Lobby Plugin...")
+        logger.info("Starting MythicPvP Lobby...")
         
         try {
             // Initialize core managers
@@ -106,13 +118,16 @@ object LobbyPlugin {
                     schematicManager.initialize()
                     schematicManager.pasteStartupSchematics(lobbyInstance)
                 } catch (e: Exception) {
-                    logger.error("Failed to initialize or paste startup schematics", e)
+                    logger.error("Failed to initialize schematics", e)
                 }
             }
             
-            logger.info("Lobby Plugin successfully initialized!")
+            // Start permission cache cleanup task
+            startPermissionCacheCleanup()
+            
+            logger.info("Lobby server ready!")
         } catch (e: Exception) {
-            logger.error("Failed to initialize Lobby Plugin", e)
+            logger.error("Failed to initialize Lobby", e)
             throw e
         }
     }
@@ -133,6 +148,11 @@ object LobbyPlugin {
             // Shutdown vanish status monitor
             if (::vanishStatusMonitor.isInitialized) {
                 vanishStatusMonitor.shutdown()
+            }
+            
+            // Shutdown reports manager
+            if (::reportsManager.isInitialized) {
+                reportsManager.shutdown()
             }
             
             // Clear vanish plugin message listener data
@@ -156,8 +176,6 @@ object LobbyPlugin {
     }
     
     private fun initializeCore() {
-        logger.info("Initializing core managers...")
-        
         // Configuration
         configManager = ConfigManager(this)
         configManager.loadAllConfigs()
@@ -170,12 +188,17 @@ object LobbyPlugin {
         radiumIntegration = RadiumIntegration(configManager)
         radiumIntegration.initialize()
         
-        // Radium command forwarding
+        // Get Radium API URL for integrations
         val radiumApiUrl = configManager.getString(
             configManager.mainConfig,
             "radium.api.base_url",
             "http://localhost:8080"
         )
+        
+        // Heads integration for Minecraft-Heads.com
+        headsIntegration = huncho.main.lobby.integration.HeadsIntegration(radiumApiUrl)
+        
+        // Radium command forwarding
         radiumCommandForwarder = RadiumCommandForwarder(radiumApiUrl)
         
         // Radium punishment API (proper API endpoints)
@@ -190,7 +213,7 @@ object LobbyPlugin {
     }
     
     private fun initializeFeatures() {
-        logger.info("Initializing feature managers...")
+        // Initializing feature managers
         
         // Core features
         spawnManager = SpawnManager(this)
@@ -208,6 +231,8 @@ object LobbyPlugin {
         // MythicHub style features
         worldLightingManager = WorldLightingManager(this)
         tabListManager = TabListManager(this)
+        nametagManager = NametagManager(this)
+        reportsManager = ReportsManager(this)
         vanishStatusMonitor = VanishStatusMonitor(this)
         vanishEventListener = VanishEventListener(this)
         vanishPluginMessageListener = VanishPluginMessageListener(this)
@@ -217,7 +242,22 @@ object LobbyPlugin {
         // Initialize the new managers
         worldLightingManager.initialize()
         tabListManager.initialize()
+        nametagManager.initialize()
+        reportsManager.initialize()
         vanishStatusMonitor.initialize()
+        
+        // Initialize new feature managers
+        freezeManager = huncho.main.lobby.features.freeze.FreezeManager(this)
+        panicManager = huncho.main.lobby.features.panic.PanicManager(this)
+        creditsManager = huncho.main.lobby.features.credits.CreditsManager(this)
+        adminCommandManager = huncho.main.lobby.features.admin.AdminCommandManager(this)
+        staffModeManager = huncho.main.lobby.features.staffmode.StaffModeManager(this)
+        
+        freezeManager.initialize()
+        panicManager.initialize()
+        creditsManager.initialize()
+        adminCommandManager.initialize()
+        staffModeManager.initialize()
         
         // Register plugin message listener for hybrid vanish system
         val eventHandler = MinecraftServer.getGlobalEventHandler()
@@ -239,7 +279,7 @@ object LobbyPlugin {
     }
     
     private fun setupLobbyWorld() {
-        logger.info("Setting up lobby world...")
+        // Setting up lobby world
         
         val instanceManager = MinecraftServer.getInstanceManager()
         lobbyInstance = instanceManager.createInstanceContainer()
@@ -273,6 +313,32 @@ object LobbyPlugin {
             // Shutdown vanish status monitor
             if (::vanishStatusMonitor.isInitialized) {
                 vanishStatusMonitor.shutdown()
+            }
+            
+            // Shutdown nametag manager
+            if (::nametagManager.isInitialized) {
+                nametagManager.shutdown()
+            }
+            
+            // Shutdown new feature managers
+            if (::freezeManager.isInitialized) {
+                freezeManager.shutdown()
+            }
+            
+            if (::panicManager.isInitialized) {
+                panicManager.shutdown()
+            }
+            
+            if (::creditsManager.isInitialized) {
+                creditsManager.shutdown()
+            }
+            
+            if (::adminCommandManager.isInitialized) {
+                adminCommandManager.shutdown()
+            }
+            
+            if (::staffModeManager.isInitialized) {
+                staffModeManager.shutdown()
             }
             
             // Cancel all coroutines
@@ -346,7 +412,7 @@ object LobbyPlugin {
                 // Initialize punishment service with Redis support
                 punishmentService = PunishmentService(this, radiumIntegration, redisManager!!, redisCache!!)
                 
-                logger.info("Redis integration initialized successfully")
+                // Redis integration initialized
             } else {
                 logger.warn("Failed to connect to Redis - punishment system will use HTTP API only")
                 
@@ -369,6 +435,24 @@ object LobbyPlugin {
         }
     }
     
+    /**
+     * Starts the permission cache cleanup task
+     */
+    private fun startPermissionCacheCleanup() {
+        // Start permission cache cleanup every 10 minutes
+        coroutineScope.launch {
+            while (true) {
+                try {
+                    kotlinx.coroutines.delay(10 * 60 * 1000L) // 10 minutes
+                    huncho.main.lobby.utils.PermissionCache.cleanupExpiredCache()
+                    // Permission cache cleanup completed
+                } catch (e: Exception) {
+                    logger.error("Error during permission cache cleanup", e)
+                }
+            }
+        }
+    }
+
     /**
      * Get the vanish plugin message listener
      */

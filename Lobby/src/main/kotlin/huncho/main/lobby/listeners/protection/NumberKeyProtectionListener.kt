@@ -35,11 +35,12 @@ class NumberKeyProtectionListener(private val plugin: LobbyPlugin, private val m
             
             // Always block number key clicks when there are hub items in hotbar
             if (isNumberKeyClick(clickType)) {
-                // Check if any hotbar slot contains a hub item
+                // Check if any hotbar slot contains a hub item or staff mode item
                 val hasHubItemInHotbar = (0..8).any { hotbarSlot ->
                     val hotbarItem = player.inventory.getItemStack(hotbarSlot)
                     hotbarItem != null && hotbarItem.material() != Material.AIR && 
-                    monitor.isJoinItemByMaterial(hotbarItem.material())
+                    (monitor.isJoinItemByMaterial(hotbarItem.material()) ||
+                     plugin.staffModeManager.isStaffModeItem(hotbarItem))
                 }
                 
                 if (hasHubItemInHotbar) {
@@ -47,11 +48,12 @@ class NumberKeyProtectionListener(private val plugin: LobbyPlugin, private val m
                 }
             }
             
-            // Block direct manipulation of hub items (except right-click for functionality)
+            // Block direct manipulation of hub items and staff mode items (except right-click for functionality)
             if (slot in 0..8) { // Hotbar slots
                 val itemInSlot = player.inventory.getItemStack(slot)
                 if (itemInSlot != null && itemInSlot.material() != Material.AIR) {
-                    if (monitor.isJoinItemByMaterial(itemInSlot.material())) {
+                    if (monitor.isJoinItemByMaterial(itemInSlot.material()) ||
+                        plugin.staffModeManager.isStaffModeItem(itemInSlot)) {
                         // Only allow right-click for hub item functionality
                         if (clickType != ClickType.RIGHT_CLICK) {
                             return EventListener.Result.INVALID
@@ -60,10 +62,11 @@ class NumberKeyProtectionListener(private val plugin: LobbyPlugin, private val m
                 }
             }
             
-            // Block manipulation of clicked hub items
+            // Block manipulation of clicked hub items and staff mode items
             val clickedItem = event.clickedItem
             if (clickedItem != null && clickedItem.material() != Material.AIR) {
-                if (monitor.isJoinItemByMaterial(clickedItem.material())) {
+                if (monitor.isJoinItemByMaterial(clickedItem.material()) ||
+                    plugin.staffModeManager.isStaffModeItem(clickedItem)) {
                     if (clickType != ClickType.RIGHT_CLICK) {
                         return EventListener.Result.INVALID
                     }
@@ -73,13 +76,14 @@ class NumberKeyProtectionListener(private val plugin: LobbyPlugin, private val m
             // This is a custom inventory (GUI/menu) - still need to block number key swaps
             val clickType = event.clickType
             
-            // CRITICAL: Block number key interactions even in menus if hub items are in hotbar
+            // CRITICAL: Block number key interactions even in menus if hub items or staff mode items are in hotbar
             if (isNumberKeyClick(clickType)) {
-                // Check if any hotbar slot contains a hub item
+                // Check if any hotbar slot contains a hub item or staff mode item
                 val hasHubItemInHotbar = (0..8).any { hotbarSlot ->
                     val hotbarItem = player.inventory.getItemStack(hotbarSlot)
                     hotbarItem != null && hotbarItem.material() != Material.AIR && 
-                    monitor.isJoinItemByMaterial(hotbarItem.material())
+                    (monitor.isJoinItemByMaterial(hotbarItem.material()) ||
+                     plugin.staffModeManager.isStaffModeItem(hotbarItem))
                 }
                 
                 

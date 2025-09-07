@@ -95,19 +95,13 @@ class YamlFactory {
                 if (loadedConfig != null) {
                     langConfig.clear() // Clear existing config first
                     langConfig.putAll(loadedConfig)
-                    println("DEBUG: Loaded lang configuration with ${langConfig.size} top-level keys: ${langConfig.keys}")
-                } else {
-                    println("DEBUG: Loaded config is null!")
                 }
 
                 reader.close()
                 inputStream.close()
             } catch (e: Exception) {
-                println("DEBUG: Failed to load lang configuration: ${e.message}")
-                e.printStackTrace()
+                // Failed to load lang configuration - continue with empty config
             }
-        } else {
-            println("DEBUG: lang.yml file does not exist at plugins/Radium/lang.yml")
         }
     }
 
@@ -142,12 +136,10 @@ class YamlFactory {
      * @return The message with placeholders replaced and color codes translated from & to §
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        // Debug: Show what's in langConfig
+        // Load config if empty
         if (langConfig.isEmpty()) {
-            println("DEBUG: langConfig is empty! Attempting to reload...")
             loadLangConfiguration()
             if (langConfig.isEmpty()) {
-                println("DEBUG: langConfig is still empty after reload!")
                 return key
             }
         }
@@ -160,11 +152,9 @@ class YamlFactory {
             if (current is Map<*, *>) {
                 current = (current as Map<*, *>)[part]
                 if (current == null) {
-                    println("DEBUG: Failed to find '$part' in path '$key' - value is null")
                     return key
                 }
             } else {
-                println("DEBUG: Failed to find '$part' in path '$key' - current is not a Map: ${current?.javaClass?.simpleName}")
                 return key // Key not found, return the key itself
             }
         }
@@ -186,7 +176,6 @@ class YamlFactory {
     fun reloadLangConfiguration() {
         langConfig.clear()
         loadLangConfiguration()
-        println("DEBUG: Reloaded lang configuration. Keys: ${langConfig.keys}")
     }
 
     /**
@@ -211,7 +200,6 @@ class YamlFactory {
         
         // If the message is the same as the key, it means it wasn't found
         if (legacyText == key) {
-            println("DEBUG: Message key '$key' not found in lang.yml") // Debug output
             // Return a fallback component
             return LegacyComponentSerializer.legacySection().deserialize("§cMessage key not found: $key")
         }

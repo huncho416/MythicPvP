@@ -16,13 +16,19 @@ class InventoryProtectionListener(private val plugin: LobbyPlugin, private val m
         val player = event.player
         val clickedItem = event.clickedItem
         
+
+        
         // Skip protection for admins (using Radium integration)
         try {
             val hasBypass = plugin.radiumIntegration.hasPermission(player.uuid, "lobby.admin").get() ||
                            plugin.radiumIntegration.hasPermission(player.uuid, "lobby.bypass.protection").get()
-            if (hasBypass) return EventListener.Result.SUCCESS
+            if (hasBypass) {
+
+                return EventListener.Result.SUCCESS
+            }
         } catch (e: Exception) {
             // If permission check fails, don't skip protection
+
         }
 
         // Check if this is a player's inventory interaction
@@ -34,6 +40,14 @@ class InventoryProtectionListener(private val plugin: LobbyPlugin, private val m
             if (clickedItem != null && clickedItem.material() != Material.AIR) {
                 if (monitor.isJoinItemByMaterial(clickedItem.material())) {
                     // Block manipulation of hub items in InventoryPreClickEvent
+
+                    return EventListener.Result.INVALID
+                }
+                
+                // Block manipulation of staff mode items
+                if (plugin.staffModeManager.isStaffModeItem(clickedItem)) {
+                    // Block manipulation of staff mode items (like the staff list book)
+
                     return EventListener.Result.INVALID
                 }
             }
@@ -44,6 +58,14 @@ class InventoryProtectionListener(private val plugin: LobbyPlugin, private val m
                 if (itemInSlot != null && itemInSlot.material() != Material.AIR) {
                     if (monitor.isJoinItemByMaterial(itemInSlot.material())) {
                         // Block any pre-click event on hub items
+
+                        return EventListener.Result.INVALID
+                    }
+                    
+                    // Block manipulation of staff mode items in hotbar slots
+                    if (plugin.staffModeManager.isStaffModeItem(itemInSlot)) {
+                        // Block any pre-click event on staff mode items
+
                         return EventListener.Result.INVALID
                     }
                 }

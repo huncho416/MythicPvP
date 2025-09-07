@@ -60,7 +60,7 @@ class QueueManager(private val plugin: LobbyPlugin) {
                     )
                     
                     queues[queueName] = queueInfo
-                    LobbyPlugin.logger.info("Loaded queue: $queueName")
+                    // Queue loaded
                 }
             }
         }

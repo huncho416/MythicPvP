@@ -29,7 +29,8 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
         val inherits: List<String> = listOf(), // List of rank names that this rank inherits from
         val suffix: String? = null, // Optional general suffix (used in chat, etc.)
         val tabPrefix: String? = null, // Optional tab-specific prefix (falls back to prefix if null)
-        val tabSuffix: String? = null // Optional tab-specific suffix
+        val tabSuffix: String? = null, // Optional tab-specific suffix
+        val nameTag: String? = null // Optional nametag format for this rank
     )
 
     private val RANKS_COLLECTION = "ranks"
@@ -520,7 +521,6 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
                     try {
                         val rank = documentToRank(document)
                         ranks.add(rank)
-                        mongoStream.logger.debug(Component.text("Loaded rank: ${rank.name} (weight: ${rank.weight})", NamedTextColor.GREEN))
                     } catch (e: Exception) {
                         mongoStream.logger.error(Component.text("Failed to convert document at index $index to rank: ${e.message}", NamedTextColor.RED))
                         mongoStream.logger.debug(Component.text("Document content: $document", NamedTextColor.RED))
@@ -573,6 +573,7 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
             .append("suffix", rank.suffix)  // Store optional general suffix
             .append("tabPrefix", rank.tabPrefix)  // Store optional tab-specific prefix
             .append("tabSuffix", rank.tabSuffix)  // Store optional tab-specific suffix
+            .append("nameTag", rank.nameTag)  // Store optional nametag format
     }
 
     /**
@@ -599,7 +600,8 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
             inherits = inherits,
             suffix = TabListManager.cleanColorCodes(document.getString("suffix")),
             tabPrefix = TabListManager.cleanColorCodes(document.getString("tabPrefix")),
-            tabSuffix = TabListManager.cleanColorCodes(document.getString("tabSuffix"))
+            tabSuffix = TabListManager.cleanColorCodes(document.getString("tabSuffix")),
+            nameTag = document.getString("nameTag")  // Load nametag format from database
         )
     }
 
@@ -786,6 +788,7 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
                 .append("suffix", rank.suffix)
                 .append("tabPrefix", rank.tabPrefix)
                 .append("tabSuffix", rank.tabSuffix)
+                .append("nameTag", rank.nameTag)  // Include nametag in database updates
             
             mongoStream.getDatabase()
                 .getCollection("ranks")

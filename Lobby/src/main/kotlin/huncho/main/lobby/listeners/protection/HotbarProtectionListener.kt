@@ -30,18 +30,20 @@ class HotbarProtectionListener(private val plugin: LobbyPlugin, private val moni
         val mainHandItem = event.mainHandItem
         val offHandItem = event.offHandItem
         
-        // Check if trying to swap a join item to offhand
+        // Check if trying to swap a join item or staff mode item to offhand
         if (mainHandItem != null && mainHandItem.material() != Material.AIR) {
             // Use material-based identification since component access is problematic
-            if (monitor.isJoinItemByMaterial(mainHandItem.material())) {
+            if (monitor.isJoinItemByMaterial(mainHandItem.material()) ||
+                plugin.staffModeManager.isStaffModeItem(mainHandItem)) {
                 return EventListener.Result.INVALID
             }
         }
         
-        // Check if trying to swap a join item from offhand
+        // Check if trying to swap a join item or staff mode item from offhand
         if (offHandItem != null && offHandItem.material() != Material.AIR) {
             // Use material-based identification since component access is problematic
-            if (monitor.isJoinItemByMaterial(offHandItem.material())) {
+            if (monitor.isJoinItemByMaterial(offHandItem.material()) ||
+                plugin.staffModeManager.isStaffModeItem(offHandItem)) {
                 return EventListener.Result.INVALID
             }
         }

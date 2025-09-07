@@ -53,7 +53,7 @@ class PunishmentQueue(
     fun start() {
         if (isRunning.compareAndSet(false, true)) {
             processingJob = scope.launch {
-                logger.info(Component.text("Starting punishment queue processor", NamedTextColor.GREEN))
+                // Start processing queue
                 processQueue()
             }
         }

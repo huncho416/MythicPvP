@@ -58,7 +58,7 @@ class StaffManager(private val radium: Radium) {
         // Use the configurable connection message from lang.yml with rank prefix, color, and server
         val connectionMessage = yamlFactory.getMessageComponent("staff.connected", 
             "player" to player.username,
-            "prefix" to prefix,
+            "rank_prefix" to prefix,
             "chatColor" to chatColor,
             "server" to serverName
         )
@@ -107,7 +107,7 @@ class StaffManager(private val radium: Radium) {
                     
                     val disconnectMessage = yamlFactory.getMessageComponent("staff.disconnected", 
                         "player" to player.username,
-                        "prefix" to prefix,
+                        "rank_prefix" to prefix,
                         "chatColor" to chatColor,
                         "server" to serverName
                     )
@@ -117,7 +117,7 @@ class StaffManager(private val radium: Radium) {
                     val serverName = playerServers[player.uniqueId] ?: "Lobby"
                     val disconnectMessage = yamlFactory.getMessageComponent("staff.disconnected", 
                         "player" to player.username,
-                        "prefix" to "",
+                        "rank_prefix" to "",
                         "chatColor" to "&f",
                         "server" to serverName
                     )
@@ -287,7 +287,7 @@ class StaffManager(private val radium: Radium) {
                     
                     // Use the chat format from the lang.yml with proper formatting
                     val chatFormat = yamlFactory.getMessageComponent("staff.chat_format",
-                        "prefix" to prefix,
+                        "rank_prefix" to prefix,
                         "player" to player.username,
                         "chatColor" to chatColor,
                         "message" to message
@@ -297,7 +297,7 @@ class StaffManager(private val radium: Radium) {
                 } else {
                     // Fallback if profile not found
                     val chatFormat = yamlFactory.getMessageComponent("staff.chat_format",
-                        "prefix" to "",
+                        "rank_prefix" to "",
                         "player" to player.username,
                         "chatColor" to "&7",
                         "message" to message
@@ -338,20 +338,18 @@ class StaffManager(private val radium: Radium) {
                     
                     val serverSwitchMessage = yamlFactory.getMessageComponent("staff.server_switch",
                         "player" to player.username,
-                        "prefix" to prefix,
+                        "rank_prefix" to prefix,
                         "chatColor" to chatColor,
-                        "from" to (from.name.takeIf { it != "Unknown" } ?: "Lobby"),
-                        "to" to (to.name.takeIf { it != "Unknown" } ?: "Server")
+                        "server" to (to.name.takeIf { it != "Unknown" } ?: "Server")
                     )
                     sendStaffMessage(serverSwitchMessage)
                 } catch (e: Exception) {
                     // Fallback message without prefix if there's an error
                     val serverSwitchMessage = yamlFactory.getMessageComponent("staff.server_switch",
                         "player" to player.username,
-                        "prefix" to "",
+                        "rank_prefix" to "",
                         "chatColor" to "&f",
-                        "from" to (from.name.takeIf { it != "Unknown" } ?: "Lobby"),
-                        "to" to (to.name.takeIf { it != "Unknown" } ?: "Server")
+                        "server" to (to.name.takeIf { it != "Unknown" } ?: "Server")
                     )
                     sendStaffMessage(serverSwitchMessage)
                 }

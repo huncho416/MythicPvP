@@ -19,7 +19,6 @@ repositories {
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
     maven("https://nexus.scarsz.me/content/groups/public/")
     maven("https://repo.jpenilla.xyz/snapshots/")
-    maven("https://mvn.intellectualsites.com/content/groups/public/")
 }
 
 dependencies {
@@ -48,6 +47,12 @@ dependencies {
     // HTTP Client for API communication
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // Gson for JSON serialization
+    implementation("com.google.code.gson:gson:2.10.1")
+    
+    // Jackson for ObjectMapper
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.0")
+
     // HTTP Server for API - simplified versions
     implementation("io.ktor:ktor-server-core:2.3.4")
     implementation("io.ktor:ktor-server-netty:2.3.4")
@@ -56,6 +61,9 @@ dependencies {
     implementation("io.ktor:ktor-server-cors:2.3.4")
     implementation("io.ktor:ktor-server-auth:2.3.4")
     implementation("io.ktor:ktor-server-status-pages:2.3.4")
+    
+    // Additional dependencies for new features
+    // minecraft-heads integration will be implemented directly
 }
 
 tasks {
@@ -95,5 +103,4 @@ val generateTemplates = tasks.register<Copy>("generateTemplates") {
     expand(props)
 }
 
-sourceSets.main.configure { java.srcDir(generateTemplates.map { it.outputs }) }
 sourceSets.main.configure { java.srcDir(generateTemplates.map { it.outputs }) }

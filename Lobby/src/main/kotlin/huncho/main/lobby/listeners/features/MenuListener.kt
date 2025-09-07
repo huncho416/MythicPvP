@@ -17,7 +17,13 @@ class MenuListener(private val plugin: LobbyPlugin) : EventListener<PlayerUseIte
         
         when (item.material()) {
             Material.COMPASS -> {
-                // Open server selector
+                // Check if player is in staff mode first
+                if (plugin.staffModeManager.isInStaffMode(player) && 
+                    plugin.staffModeManager.isStaffModeItem(item)) {
+                    // Let StaffModeListener handle this
+                    return EventListener.Result.SUCCESS
+                }
+                // Open server selector for regular compass
                 ServerSelectorMenu(plugin).open(player)
             }
             

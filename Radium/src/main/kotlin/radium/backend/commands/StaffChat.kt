@@ -77,7 +77,7 @@ class StaffChat(private val radium: Radium) {
                 
                 // Use the chat format from the lang.yml with proper formatting
                 val chatFormat = yamlFactory.getMessageComponent("staff.chat_format",
-                    "prefix" to prefix,
+                    "rank_prefix" to prefix,
                     "player" to actor.username,
                     "chatColor" to chatColor,
                     "message" to message
@@ -87,7 +87,7 @@ class StaffChat(private val radium: Radium) {
             } else {
                 // Fallback if profile not found
                 val chatFormat = yamlFactory.getMessageComponent("staff.chat_format",
-                    "prefix" to "",
+                    "rank_prefix" to "",
                     "player" to actor.username,
                     "chatColor" to "&7",
                     "message" to message

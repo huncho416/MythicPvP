@@ -26,6 +26,13 @@ class VanishPluginMessageListener(private val plugin: LobbyPlugin) : EventListen
         if (event.identifier == "radium:vanish") {
             try {
                 val message = String(event.message)
+                
+                // Safety check - ignore messages if the player is disconnecting
+                val sender = event.player
+                if (sender == null || !sender.isOnline) {
+                    plugin.logger.debug("Ignoring vanish message from disconnecting/null player")
+                    return EventListener.Result.SUCCESS
+                }
 
                 
                 // Try to parse as a general JSON first to detect message type
@@ -160,25 +167,61 @@ class VanishPluginMessageListener(private val plugin: LobbyPlugin) : EventListen
 
             
             if (!isVanished) {
-                // Player is unvanished - they should be visible to everyone
+                // Player is unvanished - they should be visible to viewers based on their visibility settings
 
                 
                 MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
                     if (viewer.uuid != player.uuid) {
-                        // Force remove and re-add viewer to trigger fresh spawn packets
-                        if (player.viewers.contains(viewer)) {
-                            player.removeViewer(viewer)
-
+                        // Check viewer's visibility setting to see if they should see this unvanished player
+                        val viewerVisibilityMode = plugin.visibilityManager.getVisibility(viewer)
+                        val shouldShowToViewer = when (viewerVisibilityMode) {
+                            huncho.main.lobby.features.visibility.VisibilityMode.ALL -> true
+                            huncho.main.lobby.features.visibility.VisibilityMode.STAFF -> {
+                                // Check if the unvanished player is staff
+                                try {
+                                    plugin.radiumIntegration.hasPermission(player.uuid, "radium.staff").get()
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                            huncho.main.lobby.features.visibility.VisibilityMode.NONE -> false
                         }
                         
-                        // Add viewer back
-                        player.addViewer(viewer)
+                        if (shouldShowToViewer) {
+                            // Force remove and re-add viewer to trigger fresh spawn packets
+                            if (player.viewers.contains(viewer)) {
+                                player.removeViewer(viewer)
 
-                        
-                        // Also ensure the unvanished player can see other players
-                        if (!viewer.viewers.contains(player)) {
-                            viewer.addViewer(player)
+                            }
+                            
+                            // Add viewer back
+                            player.addViewer(viewer)
 
+                            
+                            // Also ensure the unvanished player can see other players (if their settings allow)
+                            val playerVisibilityMode = plugin.visibilityManager.getVisibility(player)
+                            val playerShouldSeeViewer = when (playerVisibilityMode) {
+                                huncho.main.lobby.features.visibility.VisibilityMode.ALL -> true
+                                huncho.main.lobby.features.visibility.VisibilityMode.STAFF -> {
+                                    try {
+                                        plugin.radiumIntegration.hasPermission(viewer.uuid, "radium.staff").get()
+                                    } catch (e: Exception) {
+                                        false
+                                    }
+                                }
+                                huncho.main.lobby.features.visibility.VisibilityMode.NONE -> false
+                            }
+                            
+                            if (playerShouldSeeViewer && !viewer.viewers.contains(player)) {
+                                viewer.addViewer(player)
+
+                            }
+                        } else {
+                            // Viewer has visibility setting that should hide this player
+                            if (player.viewers.contains(viewer)) {
+                                player.removeViewer(viewer)
+
+                            }
                         }
                     }
                 }
@@ -213,6 +256,9 @@ class VanishPluginMessageListener(private val plugin: LobbyPlugin) : EventListen
             }
             
 
+            
+            // CRITICAL: Refresh visibility for all players to respect individual visibility settings
+            plugin.visibilityManager.refreshVisibilityForAllPlayers()
             
         } catch (e: Exception) {
             plugin.logger.warn("Error updating player visibility for ${player.username}", e)

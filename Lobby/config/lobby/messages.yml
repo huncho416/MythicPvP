@@ -28,6 +28,17 @@ commands:
   # Queue
   queue-joined: "&aYou joined the {queue} queue! &7(Position: #{position})"
   queue-left: "&cYou left the {queue} queue!"
+  
+  # Invsee
+  invsee:
+    opening: "&a&lInventory View Opened"
+    player-not-found: "&cPlayer '{player}' not found or is not online!"
+    cannot-view-self: "&cYou cannot view your own inventory!"
+    offline_not_supported: "&cYou can only view inventories of online players!"
+  
+  # Sudo  
+  sudo:
+    executed: "&aMade &e{target} &aexecute: &f{command}"
   queue-not-in: "&cYou are not in any queue!"
   queue-not-found: "&cQueue '{queue}' not found!"
   queue-paused: "&eQueue '{queue}' has been paused!"
@@ -47,6 +58,31 @@ commands:
   # Scoreboard
   scoreboard-enabled: "&aScoreboard enabled!"
   scoreboard-disabled: "&cScoreboard disabled!"
+  
+  # Invsee
+  invsee:
+    opening: "&a&lInventory View Opened"
+    opening-readonly: "&e&lInventory View Opened (Read-Only)"
+    can-modify: "&7You can modify {player}'s inventory"
+    readonly: "&7You are viewing {player}'s inventory"
+    changes-saved: "&7Changes will be saved when you close the inventory"
+    no-edit-permission: "&7You cannot make changes without edit permission"
+    closed: "&a&lInventory Closed"
+    closed-readonly: "&e&lInventory Closed"
+    changes-applied: "&7Changes have been saved to {player}'s inventory"
+    view-ended: "&7View of {player}'s inventory ended"
+    player-not-found: "&cPlayer '{player}' not found or is not online!"
+    cannot-view-self: "&cYou cannot view your own inventory!"
+    no-edit-perm-action: "&cYou don't have permission to edit inventories!"
+    error-opening: "&cError opening inventory: {error}"
+    error-syncing: "&cError syncing inventory changes!"
+    usage: "&c&lUsage:|&7/invsee <player>|&7View another player's inventory|&7Requires invsee.edit permission to modify items"
+  
+  # Sudo
+  sudo:
+    executed: "&aSudo command executed on {player}: {command}"
+    player-not-found: "&cPlayer '{player}' not found or is not online!"
+    usage: "&c&lUsage:|&7/sudo <player> <command>|&7Force a player to execute a command"
 
 # Menu Titles
 menus:

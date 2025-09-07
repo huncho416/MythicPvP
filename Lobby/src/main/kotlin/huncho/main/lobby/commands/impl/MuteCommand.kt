@@ -5,6 +5,7 @@ import huncho.main.lobby.api.PunishmentApiResult
 import huncho.main.lobby.models.PunishmentRequest
 import huncho.main.lobby.utils.MessageUtils
 import huncho.main.lobby.utils.PlayerLookupUtils
+import huncho.main.lobby.utils.PermissionCache
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.minestom.server.MinecraftServer
@@ -18,11 +19,10 @@ class MuteCommand(private val plugin: LobbyPlugin) : Command("mute") {
         // Only show command to players with permission
         setCondition { sender, _ ->
             when (sender) {
-                is Player -> try {
-                    plugin.radiumIntegration.hasPermission(sender.uuid, "radium.punish.mute").get() ||
-                    plugin.radiumIntegration.hasPermission(sender.uuid, "lobby.admin").get()
-                } catch (e: Exception) {
-                    false
+                is Player -> {
+                    // Use cached permission check for tab completion filtering
+                    PermissionCache.hasPermissionCached(sender, "radium.punish.mute") ||
+                    PermissionCache.hasPermissionCached(sender, "lobby.admin")
                 }
                 else -> true // Allow console
             }

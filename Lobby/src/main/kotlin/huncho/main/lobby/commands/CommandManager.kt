@@ -12,7 +12,7 @@ class CommandManager(private val plugin: LobbyPlugin) {
             // Register command classes
             registerCommands()
             
-            LobbyPlugin.logger.info("All commands registered successfully!")
+            // Commands registration complete
         } catch (e: Exception) {
             LobbyPlugin.logger.error("Failed to register commands", e)
             throw e
@@ -50,16 +50,80 @@ class CommandManager(private val plugin: LobbyPlugin) {
             registerMinestomCommand(SchematicCommand(service, plugin.radiumIntegration))
         }
         
-        // Feature commands (will be created)
-        // registerMinestomCommand(PlayerVisibilityCommand(plugin))
-        // registerMinestomCommand(ScoreboardCommand(plugin))
-        // registerMinestomCommand(SoundCommand(plugin))
+        // Nametag commands
+        registerMinestomCommand(NametagCommand(plugin))
+        
+        // Reports and requests commands
+        registerMinestomCommand(ReportCommand(plugin))
+        registerMinestomCommand(RequestCommand(plugin))
+        registerMinestomCommand(ReportsCommand(plugin))
+        
+        // Messaging commands
+        registerMinestomCommand(MessageCommand(plugin))
+        registerMinestomCommand(ReplyCommand(plugin))
+        registerMinestomCommand(MessageCommand(plugin))
+        registerMinestomCommand(ReplyCommand(plugin))
+        
+        // Messaging commands
+        registerMinestomCommand(MessageCommand(plugin))
+        registerMinestomCommand(ReplyCommand(plugin))
+        
+        // New feature commands
+        registerMinestomCommand(AdminChatCommand(plugin))
+        registerMinestomCommand(FreezeCommand(plugin))
+        registerMinestomCommand(UnfreezeCommand(plugin))
+        registerMinestomCommand(PanicCommand(plugin))
+        registerMinestomCommand(UnpanicCommand(plugin))
+        registerMinestomCommand(PanicStatusCommand(plugin))
+        registerMinestomCommand(CreditsCommand(plugin))
+        registerMinestomCommand(GiveCommand(plugin))
+        registerMinestomCommand(HealCommand(plugin))
+        registerMinestomCommand(FeedCommand(plugin))
+        registerMinestomCommand(StaffModeCommand(plugin))
+        
+        // Additional utility commands
+        registerMinestomCommand(RenameCommand(plugin))
+        registerMinestomCommand(MoreCommand(plugin))
+        registerMinestomCommand(AlertCommand(plugin))
+        registerMinestomCommand(BroadcastCommand(plugin))
+        registerMinestomCommand(StaffListCommand(plugin))
+        registerMinestomCommand(ClearCommand(plugin))
+        
+        // Player management commands
+        registerMinestomCommand(SkullCommand(plugin))
+        registerMinestomCommand(SudoCommand(plugin))
+        registerMinestomCommand(GodCommand(plugin))
+        
+        // Teleportation commands
+        registerMinestomCommand(TeleportCommand(plugin))
+        registerMinestomCommand(TeleportHereCommand(plugin))
+        registerMinestomCommand(TeleportWorldCommand(plugin))
+        registerMinestomCommand(TeleportPositionCommand(plugin))
+        
+        // Information commands
+        registerMinestomCommand(DiscordCommand(plugin))
+        registerMinestomCommand(TwitterCommand(plugin))
+        registerMinestomCommand(StoreCommand(plugin))
+        
+        // Server management commands
+        registerMinestomCommand(MaintenanceCommand(plugin))
+
+        // Register new separate commands for staff management
+        registerMinestomCommand(ResolveReportCommand(plugin))
+        registerMinestomCommand(DismissReportCommand(plugin))
+        registerMinestomCommand(CancelRequestCommand(plugin))
+        registerMinestomCommand(CompleteRequestCommand(plugin))
     }
     
     private fun registerMinestomCommand(command: Command) {
         try {
+            // Note: Tab completion filtering for Minestom commands is complex to implement
+            // due to the asynchronous nature of our permission system.
+            // The permission checks are handled in each command's execution via checkPermissionAndExecute
+            // which provides security even if commands appear in tab completion.
+            
             MinecraftServer.getCommandManager().register(command)
-            LobbyPlugin.logger.info("Successfully registered command: ${command.name}")
+            // Command registered
         } catch (e: Exception) {
             LobbyPlugin.logger.error("Failed to register command: ${command.name}", e)
         }

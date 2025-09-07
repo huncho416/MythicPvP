@@ -426,4 +426,21 @@ class PunishmentRepository(
         val activePunishments: Long,
         val punishmentsByType: Map<PunishmentType, Long>
     )
+
+    /**
+     * Find all punishments by IP address (including inactive)
+     * Used for alt account detection
+     */
+    suspend fun findAllPunishmentsByIp(ip: String): List<Punishment> {
+        return try {
+            val filter = Document("ip", ip)
+            collection.find(filter)
+                .asFlow()
+                .toList()
+                .map { Punishment.fromDocument(it) }
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to find all punishments by IP: ${e.message}", NamedTextColor.RED))
+            emptyList()
+        }
+    }
 }

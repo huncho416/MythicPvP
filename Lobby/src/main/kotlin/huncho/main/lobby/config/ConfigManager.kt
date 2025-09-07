@@ -33,7 +33,7 @@ class ConfigManager(private val plugin: LobbyPlugin) {
         serversConfig = loadConfig("servers.yml", getDefaultServersConfig())
         queuesConfig = loadConfig("queues.yml", getDefaultQueuesConfig())
         
-        LobbyPlugin.logger.info("All configuration files loaded successfully!")
+        // Configuration files loaded
     }
     
     private fun createConfigFolder() {
@@ -53,7 +53,6 @@ class ConfigManager(private val plugin: LobbyPlugin) {
         return try {
             FileInputStream(file).use { input ->
                 val result = yaml.load<Map<String, Any>>(input) ?: emptyMap()
-                LobbyPlugin.logger.info("Successfully loaded $filename with ${result.keys.size} root keys: ${result.keys}")
                 result
             }
         } catch (e: Exception) {

@@ -2,6 +2,7 @@ package huncho.main.lobby.listeners.player
 
 import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.utils.MessageUtils
+import huncho.main.lobby.utils.PermissionCache
 import net.minestom.server.event.EventListener
 import net.minestom.server.event.player.PlayerDisconnectEvent
 import kotlinx.coroutines.runBlocking
@@ -22,6 +23,9 @@ class PlayerLeaveListener(private val plugin: LobbyPlugin) : EventListener<Playe
     
     private suspend fun handlePlayerLeave(player: net.minestom.server.entity.Player) {
         try {
+            // Clean up packet vanish manager first to avoid protocol errors
+            plugin.packetVanishManager.handlePlayerDisconnect(player.uuid)
+            
             // Sync with Radium
             plugin.radiumIntegration.syncPlayerOnLeave(player)
             
@@ -42,6 +46,9 @@ class PlayerLeaveListener(private val plugin: LobbyPlugin) : EventListener<Playe
             
             // Clean up vanish status tracking
             plugin.vanishStatusMonitor.removePlayer(player.uuid)
+            
+            // Clean up permission cache
+            PermissionCache.clearPlayerCache(player.uuid)
             
         } catch (e: Exception) {
             LobbyPlugin.logger.error("Error handling player leave for ${player.username}", e)

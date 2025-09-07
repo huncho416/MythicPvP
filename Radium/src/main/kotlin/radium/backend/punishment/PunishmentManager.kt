@@ -168,10 +168,14 @@ class PunishmentManager(
                 }
                 PunishmentType.WARN -> {
                     target?.let {
+                        // Get warning count AFTER saving the punishment to include current warning
+                        val warnCount = repository.countActiveWarnings(targetId)
                         it.sendMessage(
                             radium.yamlFactory.getMessageComponent(
                                 "punishments.player.warn_notice",
-                                "reason" to reason
+                                "staff" to staff.username,
+                                "reason" to reason,
+                                "warnings" to warnCount.toString()
                             )
                         )
                     }
@@ -258,7 +262,8 @@ class PunishmentManager(
             staff.sendMessage(
                 radium.yamlFactory.getMessageComponent(
                     successMessageKey,
-                    "target" to targetName
+                    "target" to targetName,
+                    "reason" to reason
                 )
             )
 
@@ -267,7 +272,8 @@ class PunishmentManager(
             val message = radium.yamlFactory.getMessageComponent(
                 broadcastMessageKey,
                 "target" to targetName,
-                "staff" to staff.username
+                "staff" to staff.username,
+                "reason" to reason
             )
 
             if (silent) {
@@ -394,12 +400,14 @@ class PunishmentManager(
         val banMessage = if (punishment.expiresAt != null) {
             radium.yamlFactory.getMessageComponent(
                 messageKey,
+                "staff" to punishment.issuedByName,
                 "expires" to punishment.expiresAt.toString(),
                 "reason" to punishment.reason
             )
         } else {
             radium.yamlFactory.getMessageComponent(
                 messageKey,
+                "staff" to punishment.issuedByName,
                 "reason" to punishment.reason
             )
         }

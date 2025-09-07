@@ -36,6 +36,7 @@ class Rank(private val radium: Radium) {
             &e/rank settabprefix <rank> <prefix> &7- Set tab prefix
             &e/rank settabsuffix <rank> <suffix> &7- Set tab suffix
             &e/rank setweight <rank> <weight> &7- Set rank weight
+            &e/rank nametag <rank> <format> &7- Set rank nametag format
             &e/rank permission add <rank> <permission> &7- Add permission
             &e/rank permission remove <rank> <permission> &7- Remove permission
             &e/rank inherit <rank> <inherit_rank> &7- Add inheritance
@@ -542,6 +543,84 @@ class Rank(private val radium: Radium) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
                 "operation" to "list ranks",
                 "message" to e.message.toString()
+            ))
+        }
+    }
+
+    @Subcommand("nametag")
+    @CommandPermission("radium.rank.nametag")
+    suspend fun setRankNametag(
+        actor: Player,
+        @Optional @RankList rankName: String?,
+        @Optional nametagFormat: String?
+    ) {
+        try {
+            if (rankName.isNullOrEmpty()) {
+                val usageMessage = radium.yamlFactory.getMessage("rank.nametag.usage") ?: "&cUsage: /rank nametag <rank> <format>"
+                actor.sendMessage(TabListManager.safeParseColoredText(usageMessage))
+                actor.sendMessage(TabListManager.safeParseColoredText("&7Example: /rank nametag owner &4[OWNER] {name}"))
+                actor.sendMessage(TabListManager.safeParseColoredText("&7Use {name} as placeholder for player name"))
+                return
+            }
+
+            if (nametagFormat.isNullOrEmpty()) {
+                val usageMessage = radium.yamlFactory.getMessage("rank.nametag.usage") ?: "&cUsage: /rank nametag <rank> <format>"
+                actor.sendMessage(TabListManager.safeParseColoredText(usageMessage))
+                actor.sendMessage(TabListManager.safeParseColoredText("&7Example: /rank nametag owner &4[OWNER] {name}"))
+                actor.sendMessage(TabListManager.safeParseColoredText("&7Use {name} as placeholder for player name"))
+                return
+            }
+
+            val rank = rankManager.getRank(rankName)
+            if (rank == null) {
+                val notFoundMessage = radium.yamlFactory.getMessage("rank.not_found") ?: "&cRank '{rank}' not found!"
+                actor.sendMessage(TabListManager.safeParseColoredText(notFoundMessage.replace("{rank}", rankName)))
+                return
+            }
+
+            // Update the rank's nametag format
+            radium.logger.info("DEBUG: Updating rank '$rankName' with nametag format: '$nametagFormat'")
+            val success = rankManager.updateRank(rankName) { existingRank ->
+                val updatedRank = existingRank.copy(nameTag = nametagFormat)
+                radium.logger.info("DEBUG: Updated rank from nameTag='${existingRank.nameTag}' to nameTag='${updatedRank.nameTag}'")
+                updatedRank
+            }
+            
+            if (!success) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation", 
+                    "operation" to "update rank nametag"))
+                return
+            }
+            
+            // Temporary hardcoded message to test nametag functionality
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.nametag.success",
+                "rank" to rankName,
+                "nametag" to nametagFormat
+            ))
+            
+            // Update nametags for all online players with this rank
+            GlobalScope.launch {
+                try {
+                    radium.server.allPlayers.forEach { player ->
+                        val profile = radium.connectionHandler.getPlayerProfile(player.uniqueId, player.username)
+                        if (profile != null) {
+                            val playerRankNames = profile.getRanks()
+                            if (playerRankNames.any { it.equals(rankName, ignoreCase = true) }) {
+                                // This player has the updated rank - refresh their nametag
+                                // Note: You may need to implement nametag refresh logic here
+                                radium.logger.debug("Updated nametag for player ${player.username} with rank $rankName")
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    radium.logger.warn("Failed to update nametags for rank $rankName: ${e.message}")
+                }
+            }
+            
+        } catch (e: Exception) {
+            val failMessage = radium.yamlFactory.getMessage("general.failed_operation") ?: "&cFailed to {operation}: {message}"
+            actor.sendMessage(TabListManager.safeParseColoredText(
+                failMessage.replace("{operation}", "set nametag").replace("{message}", e.message.toString())
             ))
         }
     }

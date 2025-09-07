@@ -174,12 +174,8 @@ class NetworkVanishManager(private val radium: Radium) {
             // Wait for rank data to be available
             kotlinx.coroutines.delay(150)
             
-            radium.logger.debug("Updating tab list visibility for new player ${newPlayer.username}")
-            
             // Let TabListManager handle all the tab list logic
             radium.tabListManager.rebuildPlayerTabList(newPlayer)
-            
-            radium.logger.debug("Completed tab list visibility update for ${newPlayer.username}")
         } catch (e: Exception) {
             radium.logger.warn("Failed to update tab list for new player ${newPlayer.username}: ${e.message}")
         }
@@ -191,7 +187,6 @@ class NetworkVanishManager(private val radium: Radium) {
     suspend fun refreshAllTabLists() {
         try {
             radium.tabListManager.rebuildAllTabLists()
-            radium.logger.info("Refreshed tab lists for all players")
         } catch (e: Exception) {
             radium.logger.warn("Failed to refresh all tab lists: ${e.message}")
         }
@@ -378,8 +373,6 @@ class NetworkVanishManager(private val radium: Radium) {
      * Show player to all other players in the game world
      */
     private suspend fun showPlayerToOthers(player: Player) {
-        radium.logger.info("Showing ${player.username} to all other players in the game world")
-        
         // Send comprehensive unvanish update to ALL servers
         sendVanishUpdateToAllServers(player, false, VanishLevel.HELPER)
         
@@ -387,7 +380,7 @@ class NetworkVanishManager(private val radium: Radium) {
             if (viewer.uniqueId == player.uniqueId) return@forEach
             
             try {
-                radium.logger.debug("Showing ${player.username} to ${viewer.username}")
+                // Player is now visible to viewer
             } catch (e: Exception) {
                 radium.logger.warn("Failed to show ${player.username} to ${viewer.username}: ${e.message}")
             }
@@ -486,18 +479,25 @@ class NetworkVanishManager(private val radium: Radium) {
             val action = if (isVanishing) "vanished" else "unvanished"
             
             // Get the staff notification message from lang.yml
-            val messageTemplate = radium.yamlFactory.getMessage("vanish.staff_notification")
-            val finalTemplate = if (messageTemplate == "vanish.staff_notification" || messageTemplate.isBlank()) {
-                "&8[STAFF] {prefix}{player}&8 has &7{action} &8on &e{server}"
+            val messageKey = if (isVanishing) "vanish.staff_notification" else "vanish.unvanish_staff_notification"
+            val messageTemplate = radium.yamlFactory.getMessage(messageKey)
+            
+            
+            val finalTemplate = if (messageTemplate == messageKey || messageTemplate.isBlank()) {
+                // Updated fallback to match the format in lang.yml
+                "&b[SC] {rank_prefix}{player} &7has &e{action} &7on &f{server}"
             } else {
                 messageTemplate
             }
             
+            // Capitalize the server name
+            val capitalizedServer = server.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            
             val message = finalTemplate
-                .replace("{prefix}", rankPrefix)
+                .replace("{rank_prefix}", rankPrefix)
                 .replace("{player}", player.username)
                 .replace("{action}", action)
-                .replace("{server}", server)
+                .replace("{server}", capitalizedServer)
             
             // Parse the message with color codes
             val component = TabListManager.safeParseColoredText(message)

@@ -19,7 +19,8 @@ fun Route.rankRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogge
                     weight = rank.weight,
                     prefix = rank.prefix,
                     color = rank.color,
-                    permissions = rank.permissions.toList()
+                    permissions = rank.permissions.toList(),
+                    nameTag = rank.nameTag
                 )
             }
 
@@ -44,7 +45,8 @@ fun Route.rankRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogge
                 weight = rank.weight,
                 prefix = rank.prefix,
                 color = rank.color,
-                permissions = rank.permissions.toList()
+                permissions = rank.permissions.toList(),
+                nameTag = rank.nameTag
             )
 
             call.respond(response)

@@ -1,0 +1,43 @@
+server:
+  port: 25566
+  bind-address: "0.0.0.0"
+
+# Radium Backend Integration
+radium:
+  api:
+    base_url: "http://localhost:8080"
+    timeout: 30000
+
+# Velocity Proxy Configuration
+velocity:
+  enabled: true
+  secret: "CHANGE_THIS_SECRET"
+
+# Server Connection Settings
+servers:
+  - name: "lobby"
+    address: "localhost:25566"
+    default: true
+  - name: "gameserver1"
+    address: "localhost:25567"
+    default: false
+
+# Queue System Configuration
+queues:
+  enabled: true
+  default_priority: 1
+  max_queue_size: 100
+
+# Features
+features:
+  scoreboard: true
+  tablist: true
+  vanish: true
+  staff_mode: true
+  protection: true
+
+# Database (if needed for local caching)
+database:
+  enabled: false
+  type: "sqlite"
+  file: "lobby.db"

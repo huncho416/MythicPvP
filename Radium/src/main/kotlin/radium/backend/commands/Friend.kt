@@ -247,14 +247,14 @@ class Friend(private val radium: Radium) {
                     val serverName = if (server.isPresent) server.get().serverInfo.name else "Unknown"
                     
                     val onlineFormat = yamlFactory.getMessageComponent("friend.list.online_format",
-                        "name" to friendProfile.username,
+                        "friend" to friendProfile.username,
                         "server" to serverName)
                     
-                    val hoverText = yamlFactory.getMessage("friend.list.online_hover",
+                    val hoverComponent = yamlFactory.getMessageComponent("friend.list.online_hover",
                         "server" to serverName)
                     
                     actor.sendMessage(
-                        onlineFormat.hoverEvent(HoverEvent.showText(Component.text(hoverText)))
+                        onlineFormat.hoverEvent(HoverEvent.showText(hoverComponent))
                     )
                 } else {
                     // Friend is offline
@@ -267,14 +267,14 @@ class Friend(private val radium: Radium) {
                     }
                     
                     val offlineFormat = yamlFactory.getMessageComponent("friend.list.offline_format",
-                        "name" to friendProfile.username,
-                        "time" to formattedLastSeen)
+                        "friend" to friendProfile.username,
+                        "lastseen" to formattedLastSeen)
                     
-                    val hoverText = yamlFactory.getMessage("friend.list.offline_hover",
+                    val hoverComponent = yamlFactory.getMessageComponent("friend.list.offline_hover",
                         "lastSeen" to formattedLastSeen)
                     
                     actor.sendMessage(
-                        offlineFormat.hoverEvent(HoverEvent.showText(Component.text(hoverText)))
+                        offlineFormat.hoverEvent(HoverEvent.showText(hoverComponent))
                     )
                 }
             }

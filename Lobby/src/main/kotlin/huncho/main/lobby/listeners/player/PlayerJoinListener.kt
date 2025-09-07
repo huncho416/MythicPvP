@@ -3,6 +3,7 @@ package huncho.main.lobby.listeners.player
 import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.utils.MessageUtils
 import huncho.main.lobby.utils.JoinItemsUtil
+import huncho.main.lobby.utils.PermissionCache
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.coordinate.Pos
@@ -49,6 +50,9 @@ class PlayerJoinListener(private val plugin: LobbyPlugin) : EventListener<Player
             
             // Sync with Radium
             plugin.radiumIntegration.syncPlayerOnJoin(player)
+            
+            // Preload permission cache for command tab completion filtering
+            PermissionCache.preloadPermissions(player)
             
             // Check if joining player is vanished
             val isVanished = plugin.radiumIntegration.isPlayerVanished(player.uuid).join()

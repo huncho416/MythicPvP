@@ -35,7 +35,7 @@ class ServerHealthMonitor(
             }
         }
         
-        logger.info("Server health monitoring started")
+        // Monitor is ready
     }
     
     /**

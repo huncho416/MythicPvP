@@ -20,6 +20,8 @@ db.createUser({
 db.createCollection('profiles');
 db.createCollection('ranks');
 db.createCollection('punishments');
+db.createCollection('reports');
+db.createCollection('requests');
 
 // Create indexes for better performance
 db.profiles.createIndex({ "uuid": 1 }, { unique: true });
@@ -36,6 +38,18 @@ db.punishments.createIndex({ "expiresAt": 1 });
 db.punishments.createIndex({ "active": 1 });
 db.punishments.createIndex({ "ip": 1 });
 
+db.reports.createIndex({ "reporterId": 1 });
+db.reports.createIndex({ "targetId": 1 });
+db.reports.createIndex({ "status": 1 });
+db.reports.createIndex({ "timestamp": 1 });
+db.reports.createIndex({ "serverName": 1 });
+
+db.requests.createIndex({ "playerId": 1 });
+db.requests.createIndex({ "type": 1 });
+db.requests.createIndex({ "status": 1 });
+db.requests.createIndex({ "timestamp": 1 });
+db.requests.createIndex({ "serverName": 1 });
+
 // Insert default rank
 db.ranks.insertOne({
     "name": "default",
@@ -50,6 +64,6 @@ db.ranks.insertOne({
 });
 
 print("Radium database initialized successfully!");
-print("Collections created: profiles, ranks, punishments");
+print("Collections created: profiles, ranks, punishments, reports, requests");
 print("Indexes created for optimal performance");
 print("Default rank inserted");

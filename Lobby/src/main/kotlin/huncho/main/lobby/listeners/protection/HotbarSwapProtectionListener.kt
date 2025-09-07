@@ -31,12 +31,13 @@ class HotbarSwapProtectionListener(private val plugin: LobbyPlugin, private val 
         val clickType = event.clickType
         val slot = event.slot
         
-        // Check if any hotbar slot contains a hub item
+        // Check if any hotbar slot contains a hub item or staff mode item
         val hubItemSlots = mutableSetOf<Int>()
         for (hotbarSlot in 0..8) {
             val hotbarItem = player.inventory.getItemStack(hotbarSlot)
             if (hotbarItem != null && hotbarItem.material() != Material.AIR) {
-                if (monitor.isJoinItemByMaterial(hotbarItem.material())) {
+                if (monitor.isJoinItemByMaterial(hotbarItem.material()) ||
+                    plugin.staffModeManager.isStaffModeItem(hotbarItem)) {
                     hubItemSlots.add(hotbarSlot)
                 }
             }

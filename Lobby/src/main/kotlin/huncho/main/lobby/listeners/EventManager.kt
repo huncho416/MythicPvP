@@ -4,6 +4,7 @@ import huncho.main.lobby.LobbyPlugin
 import huncho.main.lobby.listeners.player.*
 import huncho.main.lobby.listeners.protection.*
 import huncho.main.lobby.listeners.features.*
+import huncho.main.lobby.listeners.gui.*
 import huncho.main.lobby.protection.JoinItemMonitor
 import net.minestom.server.MinecraftServer
 
@@ -30,6 +31,7 @@ class EventManager(private val plugin: LobbyPlugin) {
         eventHandler.addListener(ItemProtectionListener(plugin, joinItemMonitor))
         eventHandler.addListener(InteractionProtectionListener(plugin))
         eventHandler.addListener(InventoryProtectionListener(plugin, joinItemMonitor))
+        eventHandler.addListener(InventoryClickProtectionListener(plugin, joinItemMonitor))
         eventHandler.addListener(NumberKeyProtectionListener(plugin, joinItemMonitor))
         eventHandler.addListener(HotbarSwapProtectionListener(plugin, joinItemMonitor))
         eventHandler.addListener(PortalProtectionListener(plugin))
@@ -45,6 +47,17 @@ class EventManager(private val plugin: LobbyPlugin) {
         eventHandler.addListener(LaunchPadListener(plugin))
         eventHandler.addListener(MenuListener(plugin))
         eventHandler.addListener(InventoryMenuListener(plugin))
+        
+        // Staff mode listeners
+        eventHandler.addListener(StaffModeListener(plugin))
+        eventHandler.addListener(StaffModeEntityInteractListener(plugin))
+        eventHandler.addListener(StaffModeDisconnectListener(plugin))
+        eventHandler.addListener(StaffModeInventoryListener(plugin))
+        eventHandler.addListener(StaffModeDropItemListener(plugin))
+        
+        // GUI system listeners
+        eventHandler.addListener(GUIListener())
+        eventHandler.addListener(GUICloseListener())
         
         LobbyPlugin.logger.info("All event listeners registered successfully!")
         LobbyPlugin.logger.info("Join item protection monitor started - items will be automatically restored if moved")

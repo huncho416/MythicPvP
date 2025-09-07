@@ -55,13 +55,15 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
             }
 
             val highestRank = profile.getHighestRank(plugin.rankManager)
+            logger.debug("DEBUG: Profile API - Player: $actualUsername, Rank: ${highestRank?.name}, NameTag: '${highestRank?.nameTag}'")
             val rankResponse = if (highestRank != null) {
                 RankResponse(
                     name = highestRank.name,
                     weight = highestRank.weight,
                     prefix = highestRank.prefix,
                     color = highestRank.color,
-                    permissions = highestRank.permissions.toList()
+                    permissions = highestRank.permissions.toList(),
+                    nameTag = highestRank.nameTag
                 )
             } else null
 
@@ -103,13 +105,15 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
 
             val player = server.getPlayer(uuid).orElse(null)
             val highestRank = profile.getHighestRank(plugin.rankManager)
+            logger.debug("DEBUG: Profile API (UUID) - Player: ${profile.username}, Rank: ${highestRank?.name}, NameTag: '${highestRank?.nameTag}'")
             val rankResponse = if (highestRank != null) {
                 RankResponse(
                     name = highestRank.name,
                     weight = highestRank.weight,
                     prefix = highestRank.prefix,
                     color = highestRank.color,
-                    permissions = highestRank.permissions.toList()
+                    permissions = highestRank.permissions.toList(),
+                    nameTag = highestRank.nameTag
                 )
             } else null
 

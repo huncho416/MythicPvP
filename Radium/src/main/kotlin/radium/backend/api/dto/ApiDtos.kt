@@ -63,7 +63,8 @@ data class RankResponse(
     val weight: Int,
     val prefix: String,
     val color: String,
-    val permissions: List<String>
+    val permissions: List<String>,
+    val nameTag: String? = null
 )
 
 data class RankListResponse(

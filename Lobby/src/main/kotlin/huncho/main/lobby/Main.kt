@@ -4,6 +4,8 @@ import net.minestom.server.MinecraftServer
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.extras.velocity.VelocityProxy
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 
 fun main() {
     // Set up global exception handler for uncaught exceptions
@@ -49,6 +51,29 @@ fun main() {
         // Handle player login - set them to spawn in the lobby instance
         MinecraftServer.getGlobalEventHandler().addListener(AsyncPlayerConfigurationEvent::class.java) { event ->
             val player = event.player
+            
+            // Check maintenance mode first
+            if (huncho.main.lobby.commands.impl.MaintenanceCommand.isMaintenanceEnabled()) {
+                // Check if player has bypass permission synchronously
+                try {
+                    val hasBypass = LobbyPlugin.radiumIntegration.hasPermission(player.uuid, "hub.maintenance.bypass").get()
+                    if (!hasBypass) {
+                        // Disconnect player with maintenance message
+                        val maintenanceMsg = huncho.main.lobby.commands.impl.MaintenanceCommand.getMaintenanceMessage()
+                        player.kick(Component.text(maintenanceMsg, NamedTextColor.RED))
+                        LobbyPlugin.logger.info("Player ${player.username} kicked during maintenance (no bypass permission)")
+                        return@addListener
+                    } else {
+                        LobbyPlugin.logger.info("Player ${player.username} allowed during maintenance (has bypass permission)")
+                    }
+                } catch (e: Exception) {
+                    LobbyPlugin.logger.error("Error checking maintenance bypass for ${player.username}", e)
+                    // On error, kick the player to be safe
+                    val maintenanceMsg = huncho.main.lobby.commands.impl.MaintenanceCommand.getMaintenanceMessage()
+                    player.kick(Component.text(maintenanceMsg, NamedTextColor.RED))
+                    return@addListener
+                }
+            }
             
             // Set the spawning instance to our lobby
             event.spawningInstance = LobbyPlugin.lobbyInstance

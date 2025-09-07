@@ -77,16 +77,19 @@ class Warn(private val radium: Radium) {
                 )
 
                 if (success) {
+                    // Get current warning count for success message
+                    val warnCount = radium.punishmentManager.repository.countActiveWarnings(targetId)
+                    
                     actor.sendMessage(
                         radium.yamlFactory.getMessageComponent(
-                            "punishments.warn_issued",
-                            "player" to targetName,
-                            "reason" to reason
+                            "punishments.warn.success",
+                            "target" to targetName,
+                            "reason" to reason,
+                            "warnings" to warnCount.toString()
                         )
                     )
 
-                    // Show current warning count
-                    val warnCount = radium.punishmentManager.repository.countActiveWarnings(targetId)
+                    // Show current warning count with threshold
                     val threshold = radium.yamlFactory.getConfig().get("punishments")?.let { punishments ->
                         (punishments as? Map<*, *>)?.get("warn")?.let { warn ->
                             (warn as? Map<*, *>)?.get("threshold") as? Int

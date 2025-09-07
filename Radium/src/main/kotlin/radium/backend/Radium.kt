@@ -25,6 +25,7 @@ import revxrsal.commands.autocomplete.SuggestionProvider
 import revxrsal.commands.velocity.VelocityLamp
 import revxrsal.commands.velocity.VelocityVisitors.brigadier
 import radium.backend.annotations.OnlinePlayers
+import radium.backend.annotations.OnlinePlayersWithPermission
 import radium.backend.annotations.RankList
 import radium.backend.annotations.ColorList
 import radium.backend.commands.Friend
@@ -42,6 +43,20 @@ import radium.backend.commands.ChatSlow
 import radium.backend.commands.ChatMute
 import radium.backend.commands.ChatClear
 import radium.backend.commands.ChatUnmute
+import radium.backend.commands.AdminChat
+import radium.backend.commands.Credits
+import radium.backend.commands.Freeze
+import radium.backend.commands.Unfreeze
+import radium.backend.commands.Panic
+import radium.backend.commands.Unpanic
+import radium.backend.commands.Maintenance
+import radium.backend.commands.Skull
+import radium.backend.commands.Give
+import radium.backend.commands.God
+import radium.backend.commands.Sudo
+import radium.backend.commands.TeleportPosition
+import radium.backend.commands.TeleportWorld
+import radium.backend.reports.commands.ReportCommand
 import radium.backend.player.ConnectionHandler
 import radium.backend.player.RankManager
 import radium.backend.player.ChatManager
@@ -62,7 +77,18 @@ import radium.backend.punishment.commands.Kick
 import radium.backend.punishment.commands.Blacklist
 import radium.backend.punishment.commands.CheckPunishments
 import radium.backend.punishment.commands.PunishmentAdmin
+import radium.backend.punishment.commands.Alts
+import radium.backend.punishment.commands.DupeIp
 import radium.backend.punishment.events.PunishmentListener
+import radium.backend.punishment.alts.BanEvasionManager
+import radium.backend.heads.MinecraftHeadsManager
+import radium.backend.reports.ReportsManager
+import radium.backend.reports.ReportsRepository
+import radium.backend.credits.CreditsManager
+import radium.backend.freeze.FreezeManager
+import radium.backend.panic.PanicManager
+import radium.backend.maintenance.MaintenanceManager
+import com.fasterxml.jackson.databind.ObjectMapper
 
 @Plugin(
     id = "radium", name = "Radium", version = BuildConstants.VERSION
@@ -95,6 +121,18 @@ class Radium @Inject constructor(
     lateinit var punishmentRepository: PunishmentRepository
     lateinit var punishmentManager: PunishmentManager
     lateinit var punishmentListener: PunishmentListener
+    
+    // Ban Evasion System - initialized after punishment system
+    lateinit var banEvasionManager: BanEvasionManager
+
+    // Additional managers
+    lateinit var minecraftHeadsManager: MinecraftHeadsManager
+    lateinit var reportsManager: ReportsManager
+    lateinit var creditsManager: CreditsManager
+    lateinit var freezeManager: FreezeManager
+    lateinit var panicManager: PanicManager
+    lateinit var maintenanceManager: MaintenanceManager
+    lateinit var objectMapper: ObjectMapper
 
     var messageCommand: Message? = null
     lateinit var apiServer: RadiumApiServer
@@ -113,19 +151,16 @@ class Radium @Inject constructor(
         this.mcCoroutine = suspendingContainer
         suspendingContainer.initialize(this)
 
-        logger.info(Component.text("Initializing Radium plugin..."))
+        logger.info(Component.text("Initializing Radium..."))
 
         yamlFactory.initConfigurations()
-
         mongoStream.initializeDatabases()
         
         // Try to connect to Redis, but continue without it if it fails
         try {
             lettuceCache.connect()
         } catch (e: Exception) {
-            logger.warn(Component.text("Failed to connect to Redis. Continuing without Redis functionality.", NamedTextColor.YELLOW))
-            logger.warn(Component.text("Cross-server messaging will not work until Redis is properly configured.", NamedTextColor.YELLOW))
-            logger.warn(Component.text("Error: ${e.message}", NamedTextColor.RED))
+            logger.warn(Component.text("Failed to connect to Redis. Cross-server messaging disabled.", NamedTextColor.YELLOW))
         }
 
         lamp = VelocityLamp.builder(this, server)
@@ -138,6 +173,19 @@ class Radium @Inject constructor(
 
                         // Return the filtered list of online player names
                         onlinePlayers
+                    }
+                }
+
+                providers.addProviderForAnnotation(OnlinePlayersWithPermission::class.java) { annotation: OnlinePlayersWithPermission ->
+                    SuggestionProvider { context ->
+                        val actor = context.actor()
+                        
+                        // Check if the actor has the required permission
+                        if (actor is Player && actor.hasPermission(annotation.permission)) {
+                            server.allPlayers.map { it.username }
+                        } else {
+                            emptyList()
+                        }
                     }
                 }
 
@@ -159,11 +207,6 @@ class Radium @Inject constructor(
                     }
                 }
             }
-
-
-
-
-
             .build()
         
         // Register commands
@@ -183,6 +226,22 @@ class Radium @Inject constructor(
         lamp.register(ChatMute(this))
         lamp.register(ChatClear(this))
         lamp.register(ChatUnmute(this))
+        lamp.register(AdminChat(this))
+        
+        // Register additional commands
+        lamp.register(Credits(this))
+        lamp.register(Freeze(this))
+        lamp.register(Unfreeze(this))
+        lamp.register(Panic(this))
+        lamp.register(Unpanic(this))
+        lamp.register(Maintenance(this))
+        lamp.register(Skull(this))
+        lamp.register(Give(this))
+        lamp.register(God(this))
+        lamp.register(Sudo(this))
+        lamp.register(TeleportPosition(this))
+        lamp.register(TeleportWorld(this))
+        lamp.register(ReportCommand(this))
 
         // Register punishment commands
         lamp.register(Ban(this))
@@ -192,7 +251,8 @@ class Radium @Inject constructor(
         lamp.register(Blacklist(this))
         lamp.register(CheckPunishments(this))
         lamp.register(PunishmentAdmin(this))
-        logger.info(Component.text("Punishment commands registered", NamedTextColor.GREEN))
+        lamp.register(Alts(this))
+        lamp.register(DupeIp(this))
 
         // Accept brigadier visitor
         lamp.accept(brigadier(server))
@@ -277,13 +337,37 @@ class Radium @Inject constructor(
 
         // Initialize punishment system after database is connected
         try {
-            logger.info(Component.text("Initializing punishment system...", NamedTextColor.YELLOW))
             punishmentRepository = PunishmentRepository(mongoStream.getDatabase(), logger)
             punishmentManager = PunishmentManager(this, punishmentRepository, logger)
             punishmentListener = PunishmentListener(this)
-            logger.info(Component.text("Punishment system components initialized", NamedTextColor.GREEN))
         } catch (e: Exception) {
-            logger.error(Component.text("Failed to initialize punishment system components: ${e.message}", NamedTextColor.RED), e)
+            logger.error(Component.text("Failed to initialize punishment system: ${e.message}", NamedTextColor.RED), e)
+            throw e
+        }
+        
+        // Initialize ban evasion manager
+        try {
+            banEvasionManager = BanEvasionManager(this, logger)
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to initialize ban evasion manager: ${e.message}", NamedTextColor.RED), e)
+            throw e
+        }
+
+        // Initialize additional managers
+        try {
+            objectMapper = ObjectMapper()
+            minecraftHeadsManager = MinecraftHeadsManager()
+            
+            // Create reports repository first
+            val reportsRepository = radium.backend.reports.ReportsRepository(mongoStream.getDatabase(), logger)
+            reportsManager = ReportsManager(this, reportsRepository, logger)
+            
+            creditsManager = CreditsManager(mongoStream.getDatabase(), logger)
+            freezeManager = FreezeManager(this)
+            panicManager = PanicManager(this)
+            maintenanceManager = MaintenanceManager(this)
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to initialize managers: ${e.message}", NamedTextColor.RED), e)
             throw e
         }
 
@@ -309,7 +393,6 @@ class Radium @Inject constructor(
         scope.launch {
             try {
                 punishmentManager.initialize()
-                logger.info(Component.text("Punishment system initialized successfully", NamedTextColor.GREEN))
             } catch (e: Exception) {
                 logger.error(Component.text("Failed to initialize punishment system: ${e.message}", NamedTextColor.RED), e)
             }
@@ -336,10 +419,6 @@ class Radium @Inject constructor(
         syncTaskRunning = true
         lastRedisSyncTime = System.currentTimeMillis()
         lastMongoSyncTime = System.currentTimeMillis()
-
-        logger.info("Starting tiered synchronization task:")
-        logger.info("  - Memory → Redis sync interval: ${redisIntervalMs / 1000} seconds")
-        logger.info("  - Redis → MongoDB sync interval: ${mongoIntervalMs / 1000} seconds")
 
         scope.launch {
             while (syncTaskRunning) {

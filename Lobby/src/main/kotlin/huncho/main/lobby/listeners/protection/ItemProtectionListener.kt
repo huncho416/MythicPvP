@@ -17,13 +17,19 @@ class ItemProtectionListener(private val plugin: LobbyPlugin, private val monito
         val entity = event.entity
         
         if (entity is Player) {
+
+            
             // Skip protection for admins (using Radium integration)
             try {
                 val hasBypass = plugin.radiumIntegration.hasPermission(entity.uuid, "lobby.admin").get() ||
                                plugin.radiumIntegration.hasPermission(entity.uuid, "lobby.bypass.protection").get()
-                if (hasBypass) return EventListener.Result.SUCCESS
+                if (hasBypass) {
+
+                    return EventListener.Result.SUCCESS
+                }
             } catch (e: Exception) {
                 // If permission check fails, don't skip protection
+
             }
             
             val droppedItem = event.itemStack
@@ -32,6 +38,13 @@ class ItemProtectionListener(private val plugin: LobbyPlugin, private val monito
             if (droppedItem != null && droppedItem.material() != Material.AIR) {
                 // Use material-based identification since component access is problematic
                 if (monitor.isJoinItemByMaterial(droppedItem.material())) {
+
+                    return EventListener.Result.INVALID
+                }
+                
+                // Block dropping of staff mode items
+                if (plugin.staffModeManager.isStaffModeItem(droppedItem)) {
+
                     return EventListener.Result.INVALID
                 }
             }

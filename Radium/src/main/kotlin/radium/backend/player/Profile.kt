@@ -1522,8 +1522,6 @@ class Profile {
         // Filter to keep only actual friends
         val friendIds = getFriends()
         friendsLastSeen.keys.retainAll(friendIds)
-
-        radium.logger.debug("Loaded ${friendsLastSeen.size} friend last seen times from Redis for ${this.username}")
     }
 
     /**

@@ -107,16 +107,37 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
         plugin.lobbyInstance.players.forEach { target ->
             if (target == viewer) return@forEach
             
-            val shouldShow = when (mode) {
-                VisibilityMode.ALL -> true
-                VisibilityMode.STAFF -> isStaff(target)
-                VisibilityMode.NONE -> false
+            // ENHANCED: Check if target is vanished first
+            val isTargetVanished = try {
+                plugin.radiumIntegration.isPlayerVanished(target.uuid).join()
+            } catch (e: Exception) {
+                plugin.logger.warn("Error checking vanish status for ${target.username}", e)
+                false
+            }
+            
+            val shouldShow = if (isTargetVanished) {
+                // Target is vanished - only show if viewer can see vanished players
+                try {
+                    plugin.radiumIntegration.canSeeVanishedPlayer(viewer.uuid, target.uuid).join()
+                } catch (e: Exception) {
+                    plugin.logger.warn("Error checking vanish permissions for ${viewer.username} -> ${target.username}", e)
+                    false
+                }
+            } else {
+                // Target is not vanished - apply normal visibility settings
+                when (mode) {
+                    VisibilityMode.ALL -> true
+                    VisibilityMode.STAFF -> isStaff(target)
+                    VisibilityMode.NONE -> false
+                }
             }
             
             if (shouldShow && !canSeePlayer(viewer, target)) {
                 showPlayer(viewer, target)
+                plugin.logger.debug("✅ Showing ${target.username} to ${viewer.username} (mode: $mode, vanished: $isTargetVanished)")
             } else if (!shouldShow && canSeePlayer(viewer, target)) {
                 hidePlayer(viewer, target)
+                plugin.logger.debug("🚫 Hiding ${target.username} from ${viewer.username} (mode: $mode, vanished: $isTargetVanished)")
             }
         }
     }
@@ -443,6 +464,20 @@ class VisibilityManager(private val plugin: LobbyPlugin) {
         }
     }
     
+    /**
+     * Refresh visibility for all online players (useful after vanish state changes)
+     */
+    fun refreshVisibilityForAllPlayers() {
+        try {
+            plugin.lobbyInstance.players.forEach { player ->
+                updatePlayerVisibility(player)
+            }
+            plugin.logger.debug("Refreshed visibility for all ${plugin.lobbyInstance.players.size} online players")
+        } catch (e: Exception) {
+            plugin.logger.error("Error refreshing visibility for all players", e)
+        }
+    }
+
     // Stub methods for missing RadiumIntegration calls
     private fun updatePlayerSetting(player: Player, setting: String, value: String) {
         // TODO: Implement with RadiumIntegration HTTP API

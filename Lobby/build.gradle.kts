@@ -11,6 +11,10 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://jitpack.io")
     maven("https://repo.codemc.org/repository/maven-public/")
+    maven("https://maven.hapily.me/releases")
+    maven("https://repo.spring.io/milestone")
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+    maven("https://repo.minestom.net/repository/maven-public/")
 }
 
 dependencies {
@@ -49,6 +53,18 @@ dependencies {
     
     // Schematics
     implementation("dev.hollowcube:schem:1.3.1")
+    
+    // GUI Library - Custom implementation (external dependencies unavailable)
+    // implementation("com.github.Koboo:stomui:2.0.1")
+    
+    // MSNameTags for nametag system
+    implementation("com.github.echolightmc:MSNameTags:1.4-SNAPSHOT") {
+        exclude(group = "net.minestom", module = "minestom-snapshots")
+    }
+    
+    // Test dependencies
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.shadowJar {
@@ -62,6 +78,23 @@ tasks.shadowJar {
     }
 }
 
+// Fix task dependencies
+tasks.distTar {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.distZip {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.startScripts {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.named("startShadowScripts") {
+    dependsOn(tasks.jar)
+}
+
 application {
     mainClass.set("huncho.main.lobby.MainKt")
 }
@@ -73,5 +106,12 @@ java {
 tasks.withType<KotlinJvmCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        // Use language version 1.9 to avoid K2 compiler
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
